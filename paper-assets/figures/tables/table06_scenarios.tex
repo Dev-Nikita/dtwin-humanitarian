@@ -1,0 +1,10 @@
+\begin{tabular}{llrlrl}
+\toprule
+scenario & description & load multiplier & hazard multipliers & shock rate & destroyed elements \\
+\midrule
+S1\_normal & Nominal humanitarian operation, moderate load, no external shocks. & 1.0000 & - & 0.0003 & - \\
+S2\_bs\_overload & Population influx into a camp; terrestrial base stations congested. & 1.8500 & 4G:4.5, 5G:4.2, 6G:3.8, EDGE:3.2 & 0.0009 & - \\
+S3\_leo\_degradation & Ionospheric scintillation and handover churn degrade the LEO segment. & 1.2500 & LEO:4.0, UAV:3.0 & 0.0012 & bs5g\_3, bs4g\_2, bs6g\_2 \\
+S4\_disaster\_collapse & Disaster/conflict zone: cascading loss of terrestrial and power infrastructure. & 2.1500 & 4G:6.0, 5G:6.8, 6G:6.5, EDGE:5.5, LEO:3.4, UAV:4.2 & 0.0020 & bs5g\_3, bs4g\_2, bs6g\_2, bs4g\_1, bs5g\_2 \\
+\bottomrule
+\end{tabular}

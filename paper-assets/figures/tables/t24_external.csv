@@ -1,0 +1,7 @@
+policy,availability [%],resilience loss,recovery [slots],proactive migrations
+P0 static,98.77,5.91,20.37,0.0
+P1 reactive restoration,98.82,5.75,19.69,0.0
+P2 threshold-proactive,97.28,13.19,1.86,285.17
+P3 degradation-aware,98.65,6.44,3.45,46.5
+P4 proposed (predictive),98.85,5.59,13.16,5.88
+P5 perfect-state reference,98.62,6.6,4.38,38.96

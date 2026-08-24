@@ -1,0 +1,7 @@
+policy,unweighted L,class-balanced L_w,flow-weighted L_w
+P0 static,19.35,11.56,18.04
+P1 reactive restoration,16.97,11.47,16.43
+P2 threshold-proactive,40.74,26.98,40.52
+P3 degradation-aware,13.33,12.32,13.85
+P4 proposed (predictive),11.44,9.29,11.4
+P5 perfect-state reference,18.87,13.78,18.91

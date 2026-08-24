@@ -1,0 +1,9 @@
+experiment,setting,key metric,value
+leave one scenario out,S2_bs_overload,PR-AUC lift,9.03
+leave one scenario out,S3_leo_degradation,PR-AUC lift,19.43
+leave one scenario out,S4_disaster_collapse,PR-AUC lift,6.11
+unseen mechanism,S5_leo_handover,PR-AUC lift,11.79
+unseen mechanism,S6_common_cause,PR-AUC lift,1.49
+migration cost,S3_leo_degradation,break-even cost [slots],3.0
+migration cost,S4_disaster_collapse,break-even cost [slots],5.0
+prediction horizon,closed-loop optimum,H [slots],3.0

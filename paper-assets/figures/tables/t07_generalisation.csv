@@ -1,0 +1,6 @@
+setting,held_out,prevalence,roc_auc,pr_auc,precision,recall,f1,brier,false_alarm_rate,lift,threshold,n_test,recall_recalibrated,f1_recalibrated,threshold_recalibrated
+leave_one_scenario_out,S2_bs_overload,0.0049,0.7028,0.0445,0.1073,0.1541,0.1265,0.005,0.0063,9.025,0.125,75077,0.1135,0.1451,0.197
+leave_one_scenario_out,S3_leo_degradation,0.0102,0.9677,0.1976,0.2651,0.2075,0.2328,0.0088,0.0059,19.4335,0.14,62564,0.5204,0.2896,0.101
+leave_one_scenario_out,S4_disaster_collapse,0.0296,0.876,0.1808,0.2612,0.1356,0.1785,0.0265,0.0117,6.1113,0.15,52359,0.4597,0.2931,0.0858
+unseen_mechanism,S5_leo_handover,0.0011,0.8811,0.0129,0.0,0.0,0.0,0.0011,0.0003,11.7925,0.145,63802,0.0429,0.048,0.0706
+unseen_mechanism,S6_common_cause,0.0254,0.5913,0.0377,0.1356,0.0044,0.0085,0.0252,0.0007,1.4864,0.145,71642,0.0682,0.0628,0.01

@@ -1,0 +1,2 @@
+nodes,links,mean_degree,diameter,algebraic_connectivity,avg_path_latency_ms,edge_connectivity
+19,36,3.789473684210526,4,0.5050232702498625,18.36549707602339,2

@@ -1,0 +1,42 @@
+\begin{tabular}{llrrrrrrr}
+\toprule
+scenario & metric & mean\_reference & mean\_policy & relative\_change\_pct & cohens\_dz & p\_value\_ttest & p\_holm & significant\_005 \\
+\midrule
+S4\_disaster\_collapse & mean\_recovery\_steps & 14.2549 & 3.6972 & -74.0640 & -7.3596 & 0.0000 & 0.0000 & True \\
+ALL & mean\_recovery\_steps & 8.6170 & 3.0260 & -64.8838 & -0.8818 & 0.0000 & 0.0000 & True \\
+S3\_leo\_degradation & mean\_recovery\_steps & 17.0463 & 7.6671 & -55.0220 & -2.3235 & 0.0000 & 0.0000 & True \\
+S4\_disaster\_collapse & service\_availability & 0.9649 & 0.9766 & 1.2118 & 1.8744 & 0.0000 & 0.0000 & True \\
+ALL & service\_availability & 0.9853 & 0.9889 & 0.3741 & 0.6018 & 0.0000 & 0.0000 & True \\
+S3\_leo\_degradation & service\_availability & 0.9768 & 0.9797 & 0.2958 & 0.6266 & 0.0054 & 0.4610 & False \\
+S2\_bs\_overload & service\_availability & 0.9993 & 0.9995 & 0.0162 & 0.5462 & 0.0135 & 0.9903 & False \\
+S4\_disaster\_collapse & avail\_medical\_telemetry & 0.9773 & 0.9802 & 0.2988 & 0.5246 & 0.0171 & 0.9903 & False \\
+ALL & mean\_packet\_loss & 0.0288 & 0.0285 & -1.0269 & -0.2076 & 0.0447 & 0.9903 & False \\
+S4\_disaster\_collapse & mean\_packet\_loss & 0.0603 & 0.0592 & -1.8659 & -0.4269 & 0.0477 & 0.9903 & False \\
+S2\_bs\_overload & sla\_compliance & 0.9612 & 0.9615 & 0.0387 & 0.4135 & 0.0546 & 0.9903 & False \\
+ALL & sla\_compliance & 0.7915 & 0.7944 & 0.3688 & 0.1926 & 0.0621 & 0.9903 & False \\
+ALL & avail\_emergency\_message & 0.9919 & 0.9927 & 0.0808 & 0.1553 & 0.1315 & 0.9903 & False \\
+S2\_bs\_overload & mean\_recovery\_steps & 3.1667 & 0.7396 & -76.6447 & -0.3035 & 0.1506 & 0.9903 & False \\
+S4\_disaster\_collapse & sla\_compliance & 0.4022 & 0.4109 & 2.1489 & 0.3030 & 0.1512 & 0.9903 & False \\
+S3\_leo\_degradation & sla\_compliance & 0.8055 & 0.8082 & 0.3301 & 0.2906 & 0.1679 & 0.9903 & False \\
+S2\_bs\_overload & avail\_medical\_telemetry & 0.9996 & 0.9996 & 0.0050 & 0.2683 & 0.2016 & 0.9903 & False \\
+S4\_disaster\_collapse & success\_emergency\_message & 0.5230 & 0.5331 & 1.9367 & 0.2670 & 0.2037 & 0.9903 & False \\
+ALL & success\_emergency\_message & 0.8417 & 0.8444 & 0.3169 & 0.1215 & 0.2370 & 0.9903 & False \\
+ALL & avail\_medical\_telemetry & 0.9902 & 0.9907 & 0.0498 & 0.1167 & 0.2556 & 0.9903 & False \\
+S2\_bs\_overload & avail\_emergency\_message & 0.9992 & 0.9997 & 0.0432 & 0.2041 & 0.3277 & 0.9903 & False \\
+S3\_leo\_degradation & avail\_emergency\_message & 0.9822 & 0.9837 & 0.1483 & 0.1932 & 0.3537 & 0.9903 & False \\
+S4\_disaster\_collapse & avail\_emergency\_message & 0.9862 & 0.9875 & 0.1337 & 0.1918 & 0.3573 & 0.9903 & False \\
+S3\_leo\_degradation & avail\_medical\_telemetry & 0.9840 & 0.9830 & -0.1013 & -0.1711 & 0.4104 & 0.9903 & False \\
+S4\_disaster\_collapse & mean\_latency\_ms & 130.1585 & 130.4712 & 0.2403 & 0.1472 & 0.4781 & 0.9903 & False \\
+S2\_bs\_overload & mean\_packet\_loss & 0.0171 & 0.0171 & -0.0787 & -0.1441 & 0.4873 & 0.9903 & False \\
+ALL & mean\_latency\_ms & 85.7396 & 85.8039 & 0.0750 & 0.0542 & 0.5967 & 0.9903 & False \\
+S2\_bs\_overload & success\_emergency\_message & 0.9901 & 0.9905 & 0.0397 & 0.1061 & 0.6083 & 0.9903 & False \\
+ALL & success\_command\_control & 0.6715 & 0.6705 & -0.1616 & -0.0524 & 0.6086 & 0.9903 & False \\
+S3\_leo\_degradation & success\_command\_control & 0.6604 & 0.6581 & -0.3482 & -0.0718 & 0.7282 & 0.9903 & False \\
+S3\_leo\_degradation & mean\_packet\_loss & 0.0287 & 0.0286 & -0.1510 & -0.0642 & 0.7558 & 0.9903 & False \\
+S4\_disaster\_collapse & success\_command\_control & 0.1725 & 0.1709 & -0.9439 & -0.0634 & 0.7590 & 0.9903 & False \\
+S3\_leo\_degradation & mean\_latency\_ms & 83.8392 & 83.7825 & -0.0676 & -0.0561 & 0.7857 & 0.9903 & False \\
+S2\_bs\_overload & success\_command\_control & 0.8706 & 0.8701 & -0.0475 & -0.0465 & 0.8220 & 0.9903 & False \\
+S3\_leo\_degradation & success\_emergency\_message & 0.8547 & 0.8548 & 0.0172 & 0.0069 & 0.9735 & 0.9903 & False \\
+S2\_bs\_overload & mean\_latency\_ms & 82.4744 & 82.4755 & 0.0014 & 0.0025 & 0.9903 & 0.9903 & False \\
+\bottomrule
+\end{tabular}

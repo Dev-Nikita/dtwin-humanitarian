@@ -1,0 +1,16 @@
+\begin{tabular}{lll}
+\toprule
+threat to validity & test & outcome \\
+\midrule
+Results are an artefact of the chosen hazard rate & lambda\_0 halved and doubled (Section 7.9) & advantage positive in 1 of 2 settings; vanishes only in the near-zero-event regime \\
+Results are an artefact of the diffusion coefficient & sigma halved and doubled (Section 7.9) & advantage positive in 2 of 2 settings; loss reduction 24-57 \% \\
+Results depend on the strength of the load-hazard coupling & feedback gain set to 0 and doubled (Section 7.9) & sign preserved; overall 6 of 7 settings show a positive gain \\
+The closed-loop mechanism is asserted rather than demonstrated & load-to-hazard path disabled (Section 7.8) & loss reduction falls from 42.4 \% to 14.3 \%, isolating the exposure-shaping component \\
+Results hold only for one network graph & 5 redundancy classes, elements and traffic held fixed (Section 7.7) & benefit persists wherever alternative paths exist and shrinks towards zero when they do not \\
+The predictor is evaluated only on mechanisms it was trained on & leave-one-scenario-out plus two mechanisms held out entirely (Section 7.5) & ranking degrades and the frozen operating point loses recall on unseen dynamics; closed-loop benefit is partly preserved \\
+The prediction horizon was tuned to the outcome & horizon swept and the nominal value retained (Section 7.6) & closed-loop availability flat to a few tenths of a point; nominal H not re-optimised after the sweep \\
+Too few Monte Carlo replications & paired effect recomputed at 8 to 24 seeds (Appendix B) & mean difference stable within 0.65 slot-equivalents; interval half-width shrinks as expected \\
+Controller cost coefficients were hand-tuned & 6 one-at-a-time perturbations of the routing and budget coefficients (Appendix B) & ordering preserved in 6 of 6 settings \\
+Every scenario is parameterised by the authors & scenario parameterised from published LEO measurement studies and held out of training (Section 7.11) & advantage retained on externally derived dynamics \\
+\bottomrule
+\end{tabular}
