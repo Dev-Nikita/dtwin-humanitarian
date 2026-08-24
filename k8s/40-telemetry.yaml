@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata: {name: telemetry-service, namespace: dtwin}
+spec:
+  selector: {matchLabels: {app: telemetry-service}}
+  template:
+    metadata:
+      labels: {app: telemetry-service}
+      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "8083"}
+    spec:
+      containers:
+        - name: agent
+          image: ghcr.io/dtwin-humanitarian/telemetry-service:1.0.0
+          ports: [{containerPort: 8083}]
+          envFrom: [{configMapRef: {name: dtwin-config}}]
+          env: [{name: LISTEN_ADDR, value: ":8083"}]
+          resources:
+            requests: {cpu: "50m", memory: "64Mi"}
+            limits: {cpu: "200m", memory: "256Mi"}

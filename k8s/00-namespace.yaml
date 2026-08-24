@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: dtwin
+  labels: {app.kubernetes.io/part-of: ai-digital-twin-humanitarian}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: dtwin-config, namespace: dtwin}
+data:
+  RESULTS_DIR: "/app/data/results"
+  TWIN_URL: "http://digital-twin-service:8080"
+  PREDICTOR_URL: "http://predictor-service:8081"
+  RISK_THETA: "0.17"
+  PREDICTION_HORIZON: "10"
+  FEATURE_WINDOW: "12"

@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dtwin-ingress
+  namespace: dtwin
+  annotations: {nginx.ingress.kubernetes.io/rewrite-target: /$2}
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: dtwin.local
+      http:
+        paths:
+          - path: /twin(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend: {service: {name: digital-twin-service, port: {number: 8080}}}
+          - path: /predict(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend: {service: {name: predictor-service, port: {number: 8081}}}
+          - path: /orchestrate(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend: {service: {name: orchestrator-service, port: {number: 8082}}}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata: {name: dtwin-services, namespace: dtwin}
+spec:
+  selector: {matchExpressions: [{key: app, operator: Exists}]}
+  endpoints: [{port: http, path: /metrics, interval: 5s}]
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: {name: dtwin-pdb, namespace: dtwin}
+spec:
+  minAvailable: 1
+  selector: {matchLabels: {app: digital-twin-service}}
