@@ -1,0 +1,7 @@
+comparison,measure,seeds,mean difference,95% CI lower,95% CI upper,Cohen d_z,paired t p
+P3 degradation-aware - P1 reactive restoration,availability [pp],24,-0.1724,-0.3282,-0.0166,-0.4673,0.0316
+P3 degradation-aware - P1 reactive restoration,resilience loss,24,0.6913,-0.0592,1.4419,0.3889,0.0693
+P3 degradation-aware - P1 reactive restoration,recovery [slots],24,-16.2398,-19.7448,-12.7349,-1.9565,<0.0001
+P4 proposed (predictive) - P1 reactive restoration,availability [pp],24,0.0259,-0.0533,0.1051,0.1383,0.5048
+P4 proposed (predictive) - P1 reactive restoration,resilience loss,24,-0.1515,-0.5019,0.1989,-0.1825,0.3805
+P4 proposed (predictive) - P1 reactive restoration,recovery [slots],24,-6.5329,-9.7413,-3.3246,-0.8598,0.0003

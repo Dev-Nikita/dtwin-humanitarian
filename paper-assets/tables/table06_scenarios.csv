@@ -1,0 +1,5 @@
+scenario,description,load multiplier,hazard multipliers,shock rate,destroyed elements
+S1_normal,"Nominal humanitarian operation, moderate load, no external shocks.",1.0,-,0.0003,-
+S2_bs_overload,Population influx into a camp; terrestrial base stations congested.,1.85,"4G:4.5, 5G:4.2, 6G:3.8, EDGE:3.2",0.0009,-
+S3_leo_degradation,Ionospheric scintillation and handover churn degrade the LEO segment.,1.25,"LEO:4.0, UAV:3.0",0.0012,"bs5g_3, bs4g_2, bs6g_2"
+S4_disaster_collapse,Disaster/conflict zone: cascading loss of terrestrial and power infrastructure.,2.15,"4G:6.0, 5G:6.8, 6G:6.5, EDGE:5.5, LEO:3.4, UAV:4.2",0.002,"bs5g_3, bs4g_2, bs6g_2, bs4g_1, bs5g_2"

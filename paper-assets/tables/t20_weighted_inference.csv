@@ -1,0 +1,7 @@
+comparison,measure,seeds,mean difference,95% CI lower,95% CI upper,Cohen d_z,t,paired t p,Wilcoxon p
+P3 degradation-aware - P1 reactive restoration,unweighted L,24,-3.6387,-4.8597,-2.4177,-1.2584,-6.1647,<0.0001,<0.0001
+P3 degradation-aware - P1 reactive restoration,class-balanced L_w,24,0.8533,0.0808,1.6258,0.4664,2.2849,0.0319,0.0564
+P3 degradation-aware - P1 reactive restoration,flow-weighted L_w,24,-2.5763,-3.6083,-1.5442,-1.0541,-5.1641,<0.0001,<0.0001
+P4 proposed (predictive) - P1 reactive restoration,unweighted L,24,-5.5256,-6.8691,-4.1821,-1.7367,-8.5079,<0.0001,<0.0001
+P4 proposed (predictive) - P1 reactive restoration,class-balanced L_w,24,-2.177,-3.077,-1.277,-1.0214,-5.0037,<0.0001,<0.0001
+P4 proposed (predictive) - P1 reactive restoration,flow-weighted L_w,24,-5.0355,-6.2444,-3.8266,-1.7589,-8.6167,<0.0001,<0.0001

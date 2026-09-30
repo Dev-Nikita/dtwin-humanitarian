@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: digital-twin-service
+  namespace: dtwin
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: digital-twin-service}}
+  template:
+    metadata:
+      labels: {app: digital-twin-service}
+      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "8080"}
+    spec:
+      securityContext: {runAsNonRoot: true, seccompProfile: {type: RuntimeDefault}}
+      containers:
+        - name: server
+          image: ghcr.io/dtwin-humanitarian/digital-twin-service:1.0.0
+          ports: [{containerPort: 8080, name: http}]
+          env: [{name: LISTEN_ADDR, value: ":8080"}]
+          resources:
+            requests: {cpu: "100m", memory: "128Mi"}
+            limits: {cpu: "500m", memory: "512Mi"}
+          livenessProbe: {httpGet: {path: /healthz, port: 8080}, periodSeconds: 10}
+          readinessProbe: {httpGet: {path: /readyz, port: 8080}, periodSeconds: 5}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: digital-twin-service
+  namespace: dtwin
+  labels: {app: digital-twin-service}
+spec:
+  selector: {app: digital-twin-service}
+  ports: [{name: http, port: 8080, targetPort: 8080}]

@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: orchestrator-service, namespace: dtwin}
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: orchestrator-service}}
+  template:
+    metadata:
+      labels: {app: orchestrator-service}
+      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "8082"}
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/dtwin-humanitarian/orchestrator-service:1.0.0
+          ports: [{containerPort: 8082}]
+          envFrom: [{configMapRef: {name: dtwin-config}}]
+          env: [{name: LISTEN_ADDR, value: ":8082"}]
+          resources:
+            requests: {cpu: "200m", memory: "256Mi"}
+            limits: {cpu: "1", memory: "512Mi"}
+          livenessProbe: {httpGet: {path: /healthz, port: 8082}, periodSeconds: 10}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: orchestrator-service, namespace: dtwin}
+spec:
+  selector: {app: orchestrator-service}
+  ports: [{name: http, port: 8082, targetPort: 8082}]

@@ -1,0 +1,37 @@
+definition,scenario,policy,S(10),S(20),S(40),n flows
+any,S4 infrastructure collapse,P0 static,0.985,0.9448,0.8549,6498
+any,S4 infrastructure collapse,P1 reactive restoration,0.9836,0.944,0.8469,6505
+any,S4 infrastructure collapse,P2 threshold-proactive,0.6414,0.4569,0.3073,6508
+any,S4 infrastructure collapse,P3 degradation-aware,0.9432,0.8791,0.7801,6525
+any,S4 infrastructure collapse,P4 proposed (predictive),0.9668,0.9041,0.8011,6526
+any,S4 infrastructure collapse,P5 perfect-state reference,0.8791,0.7522,0.566,6521
+any,S6 common cause*,P0 static,0.9573,0.9179,0.8467,5001
+any,S6 common cause*,P1 reactive restoration,0.9598,0.925,0.8747,4977
+any,S6 common cause*,P2 threshold-proactive,0.8967,0.8107,0.6325,5069
+any,S6 common cause*,P3 degradation-aware,0.9556,0.9209,0.8686,5119
+any,S6 common cause*,P4 proposed (predictive),0.9526,0.9192,0.8731,5039
+any,S6 common cause*,P5 perfect-state reference,0.9438,0.9059,0.8444,5049
+any,S3 NTN degradation,P0 static,0.9834,0.9604,0.9225,3781
+any,S3 NTN degradation,P1 reactive restoration,0.9817,0.9646,0.9093,3833
+any,S3 NTN degradation,P2 threshold-proactive,0.9119,0.8402,0.7247,3699
+any,S3 NTN degradation,P3 degradation-aware,0.9759,0.9494,0.9029,3783
+any,S3 NTN degradation,P4 proposed (predictive),0.9866,0.9624,0.919,3825
+any,S3 NTN degradation,P5 perfect-state reference,0.9643,0.9292,0.8498,3792
+sustained (>= 2 slots),S4 infrastructure collapse,P0 static,0.9857,0.9476,0.8643,6498
+sustained (>= 2 slots),S4 infrastructure collapse,P1 reactive restoration,0.9845,0.947,0.8613,6505
+sustained (>= 2 slots),S4 infrastructure collapse,P2 threshold-proactive,0.8213,0.6405,0.4292,6508
+sustained (>= 2 slots),S4 infrastructure collapse,P3 degradation-aware,0.9703,0.9349,0.8752,6525
+sustained (>= 2 slots),S4 infrastructure collapse,P4 proposed (predictive),0.9813,0.9466,0.8842,6526
+sustained (>= 2 slots),S4 infrastructure collapse,P5 perfect-state reference,0.9322,0.8549,0.7176,6521
+sustained (>= 2 slots),S6 common cause*,P0 static,0.9616,0.9236,0.8571,5001
+sustained (>= 2 slots),S6 common cause*,P1 reactive restoration,0.9634,0.9291,0.882,4977
+sustained (>= 2 slots),S6 common cause*,P2 threshold-proactive,0.9368,0.8748,0.7729,5069
+sustained (>= 2 slots),S6 common cause*,P3 degradation-aware,0.9646,0.937,0.903,5119
+sustained (>= 2 slots),S6 common cause*,P4 proposed (predictive),0.9621,0.937,0.9082,5039
+sustained (>= 2 slots),S6 common cause*,P5 perfect-state reference,0.9555,0.9293,0.8912,5049
+sustained (>= 2 slots),S3 NTN degradation,P0 static,0.9852,0.964,0.9298,3781
+sustained (>= 2 slots),S3 NTN degradation,P1 reactive restoration,0.9836,0.9672,0.9165,3833
+sustained (>= 2 slots),S3 NTN degradation,P2 threshold-proactive,0.9521,0.8935,0.7928,3699
+sustained (>= 2 slots),S3 NTN degradation,P3 degradation-aware,0.9807,0.9616,0.9256,3783
+sustained (>= 2 slots),S3 NTN degradation,P4 proposed (predictive),0.989,0.9686,0.9316,3825
+sustained (>= 2 slots),S3 NTN degradation,P5 perfect-state reference,0.9755,0.9472,0.8969,3792

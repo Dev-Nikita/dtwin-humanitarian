@@ -1,0 +1,10 @@
+\begin{tabular}{llllllllllllll}
+\toprule
+variant & description & features & prevalence & ROC-AUC & PR-AUC & precision & recall & F1 & Brier score & false-alarm rate & lift & operating point & test samples \\
+\midrule
+M0\_instantaneous & instantaneous KPIs only & 13 & 0.0120 & 0.9770 & 0.3672 & 0.2838 & 0.6297 & 0.3912 & 0.0657 & 0.0193 & 30.6374 & 0.9500 & 33120 \\
+M1\_rolling & + rolling mean and standard deviation & 33 & 0.0120 & 0.9766 & 0.3502 & 0.2795 & 0.6272 & 0.3866 & 0.0664 & 0.0196 & 29.2196 & 0.9500 & 33120 \\
+M2\_trend & + slopes, first differences and ratios & 57 & 0.0120 & 0.9751 & 0.3229 & 0.2611 & 0.6222 & 0.3678 & 0.0658 & 0.0214 & 26.9401 & 0.9450 & 33120 \\
+M3\_calibrated & + isotonic calibration & 57 & 0.0120 & 0.9743 & 0.2976 & 0.3618 & 0.3955 & 0.3779 & 0.0097 & 0.0085 & 24.8286 & 0.1450 & 33120 \\
+\bottomrule
+\end{tabular}

@@ -1,0 +1,52 @@
+# Reference local deployment of the control plane described in Section 7.
+# docker compose up --build
+services:
+  digital-twin-service:
+    build:
+      context: ./go
+      dockerfile: digital-twin-service/Dockerfile
+    environment:
+      LISTEN_ADDR: ":8080"
+    ports: ["8080:8080"]
+    healthcheck:
+      test: ["CMD", "/digital-twin-service", "-h"]
+      interval: 20s
+      retries: 3
+
+  predictor-service:
+    build:
+      context: .
+      dockerfile: python/api/Dockerfile
+    environment:
+      RESULTS_DIR: /app/data/results
+    ports: ["8081:8081"]
+    depends_on: [digital-twin-service]
+
+  orchestrator-service:
+    build:
+      context: ./go
+      dockerfile: orchestrator-service/Dockerfile
+    environment:
+      LISTEN_ADDR: ":8082"
+      TWIN_URL: "http://digital-twin-service:8080"
+    ports: ["8082:8082"]
+    depends_on: [digital-twin-service, predictor-service]
+
+  telemetry-service:
+    build:
+      context: ./go
+      dockerfile: telemetry-service/Dockerfile
+    environment:
+      LISTEN_ADDR: ":8083"
+      TWIN_URL: "http://digital-twin-service:8080"
+    volumes:
+      - ./data:/data:ro
+    ports: ["8083:8083"]
+    depends_on: [digital-twin-service]
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    volumes:
+      - ./k8s/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    depends_on: [digital-twin-service, orchestrator-service]

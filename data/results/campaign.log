@@ -1,0 +1,3 @@
+S1_normal              seed=1000 static:A=1.0000  reactive:A=1.0000  proactive:A=1.0000  oracle:A=1.0000
+S1_normal              seed=1037 static:A=1.0000  reactive:A=1.0000  proactive:A=1.0000  oracle:A=1.0000
+S1_normal              seed=1074 static:A=1.0000  reactive:A=1.0000  proactive:A=1.0000  oracle:A=1.0000

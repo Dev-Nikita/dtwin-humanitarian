@@ -1,0 +1,8 @@
+scenario,description,load factor,degradation multipliers,destroyed elements,correlated shocks,handover dynamics,in training corpus
+S1_normal,"Nominal humanitarian operation, moderate load, no external shocks.",1.0,-,-,no,no,yes
+S2_bs_overload,Population influx into a camp; terrestrial base stations congested.,1.85,"4G:4.5, 5G:4.2, 6G:3.8, EDGE:3.2",-,no,no,yes
+S3_leo_degradation,Ionospheric scintillation and handover churn degrade the LEO segment.,1.25,"LEO:4.0, UAV:3.0","bs5g_3, bs4g_2, bs6g_2",no,no,yes
+S4_disaster_collapse,Disaster/conflict zone: cascading loss of terrestrial and power infrastructure.,2.15,"4G:6.0, 5G:6.8, 6G:6.5, EDGE:5.5, LEO:3.4, UAV:4.2","bs5g_3, bs4g_2, bs6g_2, bs4g_1, bs5g_2",no,no,yes
+S5_leo_handover,Non-terrestrial operation with periodic handover reconfiguration; timing and transient-degradation magnitudes are informed by published LEO measurement studies.,1.35,"LEO:2.4, UAV:2.0","bs5g_3, bs4g_2, bs6g_2",no,yes,no
+S6_common_cause,Regional common-cause disruption: shared power and backhaul dependencies inject a correlated shock into all elements of an affected region.,1.7,"4G:2.6, 5G:2.4, 6G:2.2, EDGE:2.2, UAV:2.0, LEO:1.4",-,yes,no,no
+S7_external_ntn,"Externally anchored non-terrestrial operation: the reconfiguration cadence, its phase within the minute and the satellite-link latency statistics are taken from published Starlink measurement studies rather than from the link budget of this model. Held out of the training corpus.",1.75,"LEO:3.4, UAV:2.4, 5G:2.0, 6G:1.9, 4G:2.0","bs5g_3, bs4g_2, bs6g_2",no,yes,no

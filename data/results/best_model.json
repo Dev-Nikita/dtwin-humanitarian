@@ -1,0 +1,10 @@
+{
+  "best_model": "logistic_regression",
+  "selection_metric": "pr_auc",
+  "threshold": 0.145,
+  "n_train": 166059,
+  "n_val": 66821,
+  "n_test": 33120,
+  "positive_rate_test": 0.01198671497584541,
+  "n_features": 57
+}

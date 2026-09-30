@@ -1,0 +1,11 @@
+threat to validity,test,outcome
+Results depend on the nominal degradation rate ν₀,ν₀ halved and doubled relative to nominal (Section 7.9),"No material P4-P1 difference in the near-zero-event regime at 0.5x (-0.00 pp, indistinguishable from zero); at 2x, P4 retains a +4.97 pp availability gain and a 9.4 % resilience-loss reduction"
+Results depend on the diffusion amplitude σ,σ halved and doubled relative to nominal (Section 7.9),P4 outperforms P1 in both settings; resilience-loss reductions are 56.6 % and 23.5 %
+Results depend on the utilisation-to-degradation coupling g,g set to 0 and to twice nominal (Section 7.9),P4 outperforms P1 in both settings; resilience-loss reductions are 34.3 % and 37.2 %
+The closed-loop mechanism is asserted rather than demonstrated,load-to-degradation feedback path disabled (Section 7.8),"loss reduction falls from 42.4 % to 14.3 %, isolating the exposure-shaping component"
+Results hold only for one network graph,"5 redundancy classes, elements and traffic held fixed (Section 7.7)",benefit persists wherever alternative paths exist and shrinks towards zero when they do not
+The predictor is evaluated only on mechanisms it was trained on,leave-one-scenario-out plus two mechanisms held out entirely (Section 7.5),ranking degrades and the frozen operating point loses recall on unseen dynamics; closed-loop benefit is partly preserved
+The prediction horizon was tuned to the outcome,horizon swept and the nominal value retained (Section 7.6),closed-loop availability flat to a few tenths of a point; nominal H not re-optimised after the sweep
+Too few Monte Carlo replications,paired effect recomputed at 8 to 24 seeds (Appendix B),mean difference stable within 0.65 slot-equivalents; interval half-width shrinks as expected
+Controller coefficients are heuristic rather than learned,6 one-at-a-time perturbations of the routing and budget coefficients (Appendix B),ordering preserved in 6 of 6 settings
+Every scenario is parameterised by the authors,"reconfiguration cadence, phase and link-latency statistics taken from published measurement studies, held out of training (Section 7.11)","availability and cumulative-loss advantage not retained (p = 0.50 and p = 0.38); recovery-time benefit retained (-6.53 slots, p < 0.001)"
