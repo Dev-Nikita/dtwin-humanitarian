@@ -133,3 +133,41 @@ def test_recovery_time_is_non_negative():
     assert summary["mean_recovery_steps"] >= 0
     assert 0.0 <= summary["service_availability"] <= 1.0
     assert 0.0 <= summary["sla_compliance"] <= 1.0
+
+
+def test_common_random_numbers_across_policies():
+    """Exogenous randomness must be identical across policies on one seed
+    (Reviewer 3.3): the same flows are generated, and the environment draws
+    the same random block for every element in every slot."""
+    from python.experiments.runner import ExperimentRun
+
+    a = ExperimentRun("S4_disaster_collapse", "static", 11, steps=120)
+    b = ExperimentRun("S4_disaster_collapse", "reactive", 11, steps=120)
+    blocks_a, blocks_b = [], []
+    for run, sink in ((a, blocks_a), (b, blocks_b)):
+        step = run.env.step
+
+        def rec(load=None, run=run, sink=sink, step=step):
+            out = step(load)
+            sink.append(np.concatenate([np.r_[n._z, n._u] for n in run.env.nodes.values()]))
+            return out
+
+        run.env.step = rec
+        run.run()
+    fa = [(f.start_step, f.service_type, f.source, f.destination, f.duration) for f in a.all_flows]
+    fb = [(f.start_step, f.service_type, f.source, f.destination, f.duration) for f in b.all_flows]
+    assert fa == fb
+    assert np.allclose(np.array(blocks_a), np.array(blocks_b))
+
+
+def test_lead_time_is_bounded_by_horizon():
+    from python.experiments.resilience import LeadTimeTracker
+
+    for H in (3, 5, 10):
+        tr = LeadTimeTracker(theta=0.5, horizon=H)
+        for t in range(40):
+            tr.update(t, {"n": 0.9 if t >= 5 else 0.0}, {"n": t >= 30})
+        s = tr.summary()
+        assert s["anticipated_failures"] + s["missed_failures"] == 1
+        if s["anticipated_failures"]:
+            assert 0 < s["lead_time_mean"] <= H

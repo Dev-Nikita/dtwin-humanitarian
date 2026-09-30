@@ -51,9 +51,10 @@ ROLLING_FIELDS = [
 ]
 
 
-def run_episode(episode_id: int, scenario: str, steps: int, seed: int) -> pd.DataFrame:
+def run_episode(episode_id: int, scenario: str, steps: int, seed: int,
+                **env_kwargs) -> pd.DataFrame:
     """Simulate one episode and return the raw telemetry trace."""
-    env = NetworkEnvironment(NODE_CATALOGUE, scenario, seed=seed)
+    env = NetworkEnvironment(NODE_CATALOGUE, scenario, seed=seed, **env_kwargs)
     records: List[Dict[str, float]] = []
     for t in range(steps):
         snapshot = env.step()
@@ -138,6 +139,7 @@ def build_dataset(
     steps: int = EPISODE_STEPS,
     seed: int = RNG_SEED,
     scenarios: Optional[List[str]] = None,
+    **env_kwargs,
 ) -> pd.DataFrame:
     """Build the training corpus.
 
@@ -149,7 +151,8 @@ def build_dataset(
     episode_id = 0
     for scenario in scenarios or TRAIN_SCENARIOS:
         for k in range(episodes_per_scenario):
-            frames.append(run_episode(episode_id, scenario, steps, seed + 977 * episode_id + k))
+            frames.append(run_episode(episode_id, scenario, steps, seed + 977 * episode_id + k,
+                                      **env_kwargs))
             episode_id += 1
     raw = pd.concat(frames, ignore_index=True)
     raw = add_temporal_features(raw)

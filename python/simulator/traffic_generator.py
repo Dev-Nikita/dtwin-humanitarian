@@ -37,6 +37,10 @@ class Flow:
     proactive_reroutes: int = 0
     last_reroute_step: int = -10_000
     reconfig_until: int = -1          # slot until which the flow is being re-established
+    reconfig_kind: str = ""           # migration | restoration (cause of the last reconfiguration)
+    outage_cause: str = ""            # failure | migration (cause of the current interruption)
+    recovery_failure: List[int] = field(default_factory=list)
+    recovery_migration: List[int] = field(default_factory=list)
     outage_steps: int = 0
     sla_violation_steps: int = 0
     delivered_steps: int = 0

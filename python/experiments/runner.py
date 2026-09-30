@@ -26,12 +26,14 @@ import numpy as np
 import pandas as pd
 
 from ..orchestrator.digital_twin import DigitalTwin
-from ..orchestrator.policies import Orchestrator
+from ..orchestrator.policies import POLICY_SPECS, Orchestrator
 from ..predictor.online_features import OnlineFeatureBuilder
-from ..simulator.config import DETECTION_DELAY, EPISODE_STEPS, SCENARIOS
+from ..simulator.config import (DETECTION_DELAY, EPISODE_STEPS, PREDICTION_HORIZON,
+                                REACTIVE_RECONFIG_STEPS, SCENARIOS)
 from ..simulator.failure_generator import STATUS_FAILED, NetworkEnvironment
 from ..simulator.network_topology import NODE_CATALOGUE, SINKS, TERMINALS, build_topology
 from ..simulator.traffic_generator import Flow, TrafficGenerator
+from .oracle_table import oracle_risk
 from .metrics import MetricCollector
 from .resilience import (
     LeadTimeTracker,
@@ -62,8 +64,19 @@ class ExperimentRun:
         hazard_scale: float = 1.0,
         sigma_scale: float = 1.0,
         feedback_gain_scale: float = 1.0,
+        horizon: int = PREDICTION_HORIZON,
+        budget_factors: Optional[Dict[int, float]] = None,
+        score_coef: Optional[Dict[str, float]] = None,
+        load_trace: Optional[List[Dict[str, float]]] = None,
+        kpi_scale: Optional[float] = None,
+        family: str = "jump_diffusion",
+        obs_family: str = "nominal",
     ) -> None:
         self.scenario = scenario
+        self.spec = POLICY_SPECS[policy]
+        self.horizon = int(horizon)
+        self.load_trace_in = load_trace
+        self.load_trace: List[Dict[str, float]] = []
         self.policy = policy
         self.seed = seed
         self.steps = steps
@@ -71,81 +84,116 @@ class ExperimentRun:
         self.feature_columns = feature_columns
         self.risk_scale = risk_scale
 
-        self.rng = np.random.default_rng(seed)
+        # Separate reproducible streams: exogenous traffic, controller-internal
+        # randomness (actuation delays) and the environment (seeded inside
+        # NetworkEnvironment). Traffic therefore never depends on how many draws
+        # the controller consumed, so arrivals, demands, holding times and
+        # endpoints are identical across policies for a given seed (Section 6.4).
+        ss_traffic, ss_control, ss_acct = np.random.SeedSequence([int(seed), 0x7A]).spawn(3)
+        self.rng = np.random.default_rng(ss_control)
+        self.acct_rng = np.random.default_rng(ss_acct)
+        self.traffic_rng = np.random.default_rng(ss_traffic)
         self.load_feedback = load_feedback
-        self.env = NetworkEnvironment(
-            NODE_CATALOGUE, scenario, seed=seed,
-            hazard_scale=hazard_scale, sigma_scale=sigma_scale,
-            feedback_gain_scale=feedback_gain_scale,
-        )
         self.topology_class = topology
+        destroyed, region_map = None, None
+        terminals, sinks, arrival_factor = TERMINALS, SINKS, 1.0
         if topology == "reference":
             self.graph = build_topology()
+            catalogue = dict(NODE_CATALOGUE)
+        elif topology == "large":
+            from ..simulator.large_topology import (
+                LARGE_ARRIVAL_FACTOR, LARGE_CATALOGUE, LARGE_REGION, LARGE_SINKS,
+                LARGE_TERMINALS, build_large, large_destroyed,
+            )
+            self.graph = build_large()
+            catalogue = dict(LARGE_CATALOGUE)
+            destroyed, region_map = large_destroyed(scenario), LARGE_REGION
+            terminals, sinks, arrival_factor = LARGE_TERMINALS, LARGE_SINKS, LARGE_ARRIVAL_FACTOR
         else:
             from ..simulator.topology_variants import build_variant
             self.graph = build_variant(topology)
+            catalogue = {n: t for n, t in NODE_CATALOGUE.items() if n in self.graph}
+        self.env = NetworkEnvironment(
+            catalogue, scenario, seed=seed,
+            hazard_scale=hazard_scale, sigma_scale=sigma_scale,
+            feedback_gain_scale=feedback_gain_scale,
+            destroyed=destroyed, region_map=region_map,
+            family=family, obs_family=obs_family,
+        )
+        self.region_map = region_map
         self.twin = DigitalTwin(self.graph, detection_delay=DETECTION_DELAY)
         self.theta = theta
+        kpi_scale = 1.0 if kpi_scale is None else float(kpi_scale)
+        if self.spec.kpi_scale_key == "matched" and kpi_scale == 1.0:
+            kpi_scale = _load_scale("kpi_alarm_scale.json", "kpi_scale_at_operating_point", 1.0)
         self.orch = Orchestrator(
             policy, self.twin, rng=self.rng, theta=theta, budget_scale=budget_scale,
-            migration_cost=migration_cost,
+            migration_cost=migration_cost, budget_factors=budget_factors,
+            score_coef=score_coef, kpi_scale=kpi_scale,
         )
-        self._deg_scale = 0.10
-        scale_path = os.path.join("data", "results", "degradation_index_scale.json")
-        if os.path.exists(scale_path):
-            import json as _json
-            self._deg_scale = max(1e-3, float(
-                _json.load(open(scale_path))["index_at_operating_point"]))
-        self.lead_tracker = LeadTimeTracker(theta=theta)
+        self._deg_scale = max(1e-3, _load_scale(
+            "degradation_index_scale.json", "index_at_operating_point", 0.10))
+        self.lead_tracker = LeadTimeTracker(theta=theta, horizon=self.horizon)
         self.survival: List[SurvivalRecord] = []
         self.survival_sustained: List[SurvivalRecord] = []
         self.quality: List[float] = []
         self.traffic = TrafficGenerator(
-            [t for t in TERMINALS if t in self.graph],
-            [s for s in SINKS if s in self.graph],
-            self.rng,
-            load_multiplier=SCENARIOS[scenario].load_multiplier,
+            [t for t in terminals if t in self.graph],
+            [s for s in sinks if s in self.graph],
+            self.traffic_rng,
+            load_multiplier=SCENARIOS[scenario].load_multiplier * arrival_factor,
         )
         self.features = OnlineFeatureBuilder(latency_medians=latency_medians)
         self.collector = MetricCollector()
         self.active: List[Flow] = []
         self.all_flows: List[Flow] = []
-        self.node_types = {nid: ntype for nid, ntype in NODE_CATALOGUE.items()
+        self.node_types = {nid: ntype for nid, ntype in catalogue.items()
                            if nid in self.graph}
         self.timeline: List[Dict[str, float]] = []
+        self.dead_path_migrations = 0
+        self.trigger_truth = {"already_failed": 0, "fails_within_H": 0, "no_failure_within_H": 0}
+        self._pending: List = []
+        self._fail_onsets: Dict[str, List[int]] = {}
+        self._prev_failed: Dict[str, bool] = {}
 
     # ------------------------------------------------------------------ risk
+    def degradation_index(self, nid: str) -> float:
+        """Contemporaneous degradation index of P3: a weighted combination of
+        the current observable KPIs with no reference to the future."""
+        tel = self.twin.nodes[nid].telemetry
+        if not tel:
+            return 0.0
+        baseline = max(1e-6, self.twin.baseline_latency(nid))
+        return (0.45 * min(1.0, tel.get("packet_loss", 0.0) / 0.20)
+                + 0.25 * min(1.0, max(0.0, tel.get("latency_ms", 0.0) / baseline - 1.0))
+                + 0.20 * (1.0 - tel.get("availability", 1.0))
+                + 0.10 * min(1.0, tel.get("retx_rate", 0.0) / 0.30))
+
     def _risk(self) -> Dict[str, float]:
-        if self.policy in ("static", "reactive"):
+        src = self.spec.risk
+        if src in ("none", "kpi"):
             return {nid: 0.0 for nid in self.node_types}
-        if self.policy == "degradation_aware":
-            # P5: a purely contemporaneous degradation score built from the same
-            # observable KPIs, with no reference to the future. It isolates the
-            # value of anticipation from the value of avoiding degraded elements.
-            risk = {}
-            for nid in self.node_types:
-                tel = self.twin.nodes[nid].telemetry
-                if not tel:
-                    risk[nid] = 0.0
-                    continue
-                baseline = max(1e-6, self.twin.baseline_latency(nid))
-                score = (0.45 * min(1.0, tel.get("packet_loss", 0.0) / 0.20)
-                         + 0.25 * min(1.0, max(0.0, tel.get("latency_ms", 0.0) / baseline - 1.0))
-                         + 0.20 * (1.0 - tel.get("availability", 1.0))
-                         + 0.10 * min(1.0, tel.get("retx_rate", 0.0) / 0.30))
-                # Matched operating point: the index is rescaled so that the value
-                # at which it fires as often as the predictor maps onto theta*.
-                # Without this the two baselines would be compared at different
-                # alarm rates and the difference would be an artefact of scaling.
-                risk[nid] = float(np.clip(score / self._deg_scale * self.theta, 0.0, 1.0))
-            return risk
-        if self.policy == "oracle":
+        if src == "index":
+            # Matched operating point: the index is rescaled so that the value at
+            # which it fires as often as the predictor maps onto theta*. The scale
+            # is estimated on validation runs only and frozen (Section 6.3).
+            return {nid: float(np.clip(self.degradation_index(nid) / self._deg_scale * self.theta,
+                                       0.0, 1.0)) for nid in self.node_types}
+        if src == "oracle_band":
             risk = {}
             for nid, node in self.env.nodes.items():
-                h = node.health
-                r = (ORACLE_HIGH - h) / (ORACLE_HIGH - ORACLE_LOW)
+                r = (ORACLE_HIGH - node.health) / (ORACLE_HIGH - ORACLE_LOW)
                 risk[nid] = float(np.clip(r, 0.0, 1.0))
             return risk
+        if src == "oracle_prob":
+            return {nid: (1.0 if node.status == STATUS_FAILED else
+                          oracle_risk(self.scenario, node.node_type, node.health, self.horizon,
+                                      in_region=(self.env.region_map.get(nid) in
+                                                 SCENARIOS[self.scenario].common_cause_regions)))
+                    for nid, node in self.env.nodes.items()}
+        return self._predicted_risk()
+
+    def _predicted_risk(self) -> Dict[str, float]:
         rows = []
         ids = []
         for nid, ntype in self.node_types.items():
@@ -175,6 +223,10 @@ class ExperimentRun:
             reconfiguring = step <= flow.reconfig_until
             broken = physical_break or reconfiguring
             if broken:
+                if flow.first_outage_step is None:
+                    flow.outage_cause = ("migration" if (not physical_break and
+                                                         flow.reconfig_kind == "migration")
+                                         else "failure")
                 flow.outage_steps += 1
                 flow.outage_run += 1
                 if flow.outage_run == 2 and flow.first_sustained_at is None:
@@ -189,7 +241,10 @@ class ExperimentRun:
 
             flow.outage_run = 0
             if flow.first_outage_step is not None:
-                flow.recovery_steps.append(step - flow.first_outage_step)
+                dur = step - flow.first_outage_step
+                flow.recovery_steps.append(dur)
+                (flow.recovery_migration if flow.outage_cause == "migration"
+                 else flow.recovery_failure).append(dur)
                 flow.first_outage_step = None
 
             latency = sum(snapshot[n]["latency_ms"] for n in path)
@@ -234,11 +289,27 @@ class ExperimentRun:
                 if flow.path:
                     self.twin.add_flow_load(flow.path, flow.demand_mbps)
             load_map = self.twin.load_map()
+            self.load_trace.append(load_map)
 
-            # 2. physical environment advances under that load. Disabling the
-            #    feedback breaks the policy -> load -> hazard path while leaving
-            #    the observation model untouched.
-            snapshot = self.env.step(load_map if self.load_feedback else None)
+            # 2. physical environment advances under that load. Two ways of
+            #    breaking the policy -> load -> degradation path are supported:
+            #    load_feedback=False replaces the load by the synthetic profile
+            #    (original ablation); load_trace replays a recorded utilisation
+            #    trajectory, typically that of P1 on the same seed, so the load
+            #    level is unchanged but no longer responds to the policy.
+            if self.load_trace_in is not None:
+                env_load = self.load_trace_in[min(step, len(self.load_trace_in) - 1)]
+            elif self.load_feedback:
+                env_load = load_map
+            else:
+                env_load = None
+            snapshot = self.env.step(env_load)
+
+            for nid, node in self.env.nodes.items():
+                f = node.status == STATUS_FAILED
+                if f and not self._prev_failed.get(nid, False):
+                    self._fail_onsets.setdefault(nid, []).append(step)
+                self._prev_failed[nid] = f
 
             # 3. twin synchronisation (telemetry only)
             self.twin.ingest(snapshot)
@@ -248,7 +319,7 @@ class ExperimentRun:
             # 4. AI risk estimation
             risk = self._risk()
             self.twin.set_risk(risk)
-            if self.policy in ("proactive_ai", "oracle"):
+            if self.spec.risk in ("index", "predictor", "oracle_band", "oracle_prob"):
                 self.lead_tracker.update(
                     step, risk,
                     {nid: n.status == STATUS_FAILED for nid, n in self.env.nodes.items()},
@@ -262,9 +333,35 @@ class ExperimentRun:
                 else:
                     self.collector.record_drop(flow)
 
-            # 6. re-routing pass
-            for flow in self.active:
-                self.orch.maybe_reroute(flow, step)
+            # 6. re-routing pass; differentiated policies process flows in
+            #    decreasing criticality so that scarce residual capacity goes to
+            #    the most consequential services first (stable sort).
+            order = (sorted(self.active, key=lambda f: -f.priority)
+                     if self.orch.differentiated else self.active)
+            for flow in order:
+                old_path = list(flow.path) if flow.path else []
+                kind = self.orch.maybe_reroute(flow, step)
+                if (kind == "proactive_reroute" and DEAD_PATH_MIGRATION_COST
+                        and any(self.env.nodes[n].status == STATUS_FAILED for n in old_path)):
+                    # Physical accounting (revision): a "migration" away from a path
+                    # that is already physically down cannot be make-before-break,
+                    # because there is no working path to keep the service on while
+                    # the new one is established. The interruption is therefore the
+                    # restoration delay C_r, not the migration cost C_m. The
+                    # controller itself cannot see the physical state; only the
+                    # assessment of the interruption depends on it.
+                    delay = int(self.acct_rng.integers(*REACTIVE_RECONFIG_STEPS, endpoint=True))
+                    flow.reconfig_until = step + delay
+                    flow.reconfig_kind = "restoration"
+                    self.dead_path_migrations += 1
+                if kind == "proactive_reroute" and self.orch.last_trigger_node:
+                    # Ground-truth classification of what the migration reacted to
+                    # (assessment layer only; never visible to the controller).
+                    node = self.env.nodes[self.orch.last_trigger_node]
+                    if node.status == STATUS_FAILED:
+                        self.trigger_truth["already_failed"] += 1
+                    else:
+                        self._pending.append((self.orch.last_trigger_node, step))
 
             # 7. evaluation on the true physical state
             self.timeline.append(self._evaluate(snapshot, step))
@@ -306,6 +403,10 @@ class ExperimentRun:
                 "admitted": self.orch.counters["admitted"],
                 "rejected": self.orch.counters["rejected"],
                 "reactive_reroutes": self.orch.counters["reactive_reroute"],
+                "protection_switches": self.orch.counters["protection_switch"],
+                "backup_refreshes": self.orch.counters["backup_refresh"],
+                "horizon": self.horizon,
+                "generated_flows": len(self.all_flows),
                 "proactive_reroutes_total": self.orch.counters["proactive_reroute"],
                 "reroute_failures": self.orch.counters["reroute_failed"],
                 "node_failure_slots": int(
@@ -318,6 +419,26 @@ class ExperimentRun:
             }
         )
         summary.update(self.lead_tracker.summary())
+        # retrospective resolution of migrations triggered on non-failed elements
+        H = self.horizon
+        within = sum(1 for nid, t in self._pending
+                     if any(t < u <= t + H for u in self._fail_onsets.get(nid, [])))
+        summary.update({
+            "mig_trigger_already_failed": self.trigger_truth["already_failed"],
+            "dead_path_migrations": self.dead_path_migrations,
+            "mig_trigger_fails_within_H": within,
+            "mig_trigger_no_failure_within_H": len(self._pending) - within,
+        })
+        rf = [d for f in self.all_flows for d in f.recovery_failure]
+        rm = [d for f in self.all_flows for d in f.recovery_migration]
+        summary.update({
+            "failure_interruptions": len(rf),
+            "migration_interruptions": len(rm),
+            "mean_recovery_failure": float(np.mean(rf)) if rf else 0.0,
+            "mean_recovery_migration": float(np.mean(rm)) if rm else 0.0,
+            "outage_slots_failure": int(sum(rf)),
+            "outage_slots_migration": int(sum(rm)),
+        })
         return summary
 
     def timeline_frame(self) -> pd.DataFrame:
@@ -326,6 +447,20 @@ class ExperimentRun:
         df["policy"] = self.policy
         df["seed"] = self.seed
         return df
+
+
+# Charge C_r (not C_m) when a proactive migration leaves a path that is already
+# physically broken. False reproduces the accounting of the first submission.
+DEAD_PATH_MIGRATION_COST: bool = True
+
+
+def _load_scale(name: str, key: str, default: float) -> float:
+    path = os.path.join("data", "results", name)
+    if os.path.exists(path):
+        import json as _json
+        with open(path) as fh:
+            return float(_json.load(fh)[key])
+    return default
 
 
 def load_predictor(results_dir: str = os.path.join("data", "results")):

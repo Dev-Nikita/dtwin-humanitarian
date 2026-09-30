@@ -231,8 +231,8 @@ def run_ood() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # 3. prediction-horizon sweep
 # ---------------------------------------------------------------------------
-def run_horizon(horizons: Tuple[int, ...] = (3, 5, 10, 15, 20),
-                closed_loop_seeds: int = 6, append: bool = False) -> pd.DataFrame:
+def run_horizon(horizons: Tuple[int, ...] = (3, 5, 10, 15, 20, 30),
+                closed_loop_seeds: int = 12, append: bool = False) -> pd.DataFrame:
     raw = pd.read_parquet(DATA)
     numeric, _ = feature_columns(select_eligible(raw))
     rows = []
@@ -263,19 +263,30 @@ def run_horizon(horizons: Tuple[int, ...] = (3, 5, 10, 15, 20),
         model = CalibratedClassifierCV(pipe, method="isotonic", cv="prefit")
         model.fit(X[m_va], yy[m_va])
 
-        avail, rec, lead = [], [], []
+        avail, rec, lead, loss, rate, lead_mean = [], [], [], [], [], []
         for k in range(closed_loop_seeds):
+            # The lead-time tracker is given the swept horizon, so the reported
+            # lead time obeys 0 < T_lead <= H of Eq. (18) at every H (Reviewers
+            # 3.2, 5.1). The table of the first submission was produced by an
+            # earlier tracker that matched alarms without the horizon bound.
             run = ExperimentRun("S4_disaster_collapse", "proactive_ai", 3000 + 31 * k,
-                                steps=400, model=model, feature_columns=numeric + ["node_type"],
-                                latency_medians=ctx_medians, theta=theta)
+                                steps=500, model=model, feature_columns=numeric + ["node_type"],
+                                latency_medians=ctx_medians, theta=theta, horizon=H)
             s = run.run()
             avail.append(s["service_availability"])
             rec.append(s["mean_recovery_steps"])
+            loss.append(s["resilience_loss"])
             lead.append(s.get("lead_time_median", np.nan))
+            lead_mean.append(s.get("lead_time_mean", np.nan))
+            rate.append(s.get("anticipation_rate", np.nan))
+            assert not (s.get("lead_time_p75", 0) > H), "lead time exceeds the horizon"
         row.update({
             "cl_availability": float(np.mean(avail)),
+            "cl_resilience_loss": float(np.mean(loss)),
             "cl_recovery": float(np.mean(rec)),
             "cl_lead_time_median": float(np.nanmean(lead)),
+            "cl_lead_time_mean": float(np.nanmean(lead_mean)),
+            "cl_anticipation_rate": float(np.nanmean(rate)),
         })
         rows.append(row)
         print(f"H={H:2d} PR-AUC={row['pr_auc']:.4f} recall={row['recall']:.3f} "

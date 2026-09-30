@@ -212,7 +212,9 @@ def main() -> None:
     p_te = rule.predict_proba(te)[:, 1]
     th = best_threshold(y_va, p_va)
     m = score_all(y_te, p_te, th)
-    m.update({"model": "threshold_rule", "train_time_s": 0.0, "inference_ms_per_1k": 0.0})
+    m.update({"model": "threshold_rule", "train_time_s": 0.0, "inference_ms_per_1k": 0.0,
+              "val_pr_auc": float(average_precision_score(y_va, p_va)),
+              "val_brier": float(brier_score_loss(y_va, p_va))})
     rows.append(m)
     test_probs["threshold_rule"] = p_te
 
@@ -237,7 +239,9 @@ def main() -> None:
         infer_ms = (time.perf_counter() - t0) * 1000.0 / max(1, len(te)) * 1000.0
 
         m = score_all(y_te, p_te, th)
-        m.update({"model": name, "train_time_s": train_time, "inference_ms_per_1k": infer_ms})
+        m.update({"model": name, "train_time_s": train_time, "inference_ms_per_1k": infer_ms,
+                  "val_pr_auc": float(average_precision_score(y_va, p_va)),
+                  "val_brier": float(brier_score_loss(y_va, p_va))})
         rows.append(m)
         test_probs[name] = p_te
 
@@ -255,7 +259,8 @@ def main() -> None:
     results = pd.DataFrame(rows)[
         ["model", "accuracy", "balanced_accuracy", "precision", "recall", "f1", "mcc",
          "roc_auc", "pr_auc", "brier", "false_alarm_rate", "threshold",
-         "tn", "fp", "fn", "tp", "train_time_s", "inference_ms_per_1k"]
+         "tn", "fp", "fn", "tp", "train_time_s", "inference_ms_per_1k",
+         "val_pr_auc", "val_brier"]
     ]
     results.to_csv(os.path.join(args.results, "model_comparison.csv"), index=False)
 
@@ -266,12 +271,22 @@ def main() -> None:
         **{f"prob_{k}": v for k, v in test_probs.items()},
     )
 
-    best = results.sort_values("pr_auc", ascending=False).iloc[0]["model"]
+    # Model selection uses VALIDATION information only (Reviewer 4.3): the
+    # learned model with the highest validation PR-AUC is chosen; models within
+    # SELECTION_TOL of the best are treated as tied and the tie is broken by the
+    # validation Brier score and then by inference cost. Test metrics are
+    # computed once, after the choice, and never enter it.
+    SELECTION_TOL = 0.01
+    learned = results[results["model"] != "threshold_rule"].copy()
+    top = learned["val_pr_auc"].max()
+    tied = learned[learned["val_pr_auc"] >= top - SELECTION_TOL]
+    best = tied.sort_values(["val_brier", "inference_ms_per_1k"]).iloc[0]["model"]
     with open(os.path.join(args.results, "best_model.json"), "w") as fh:
         json.dump(
             {
                 "best_model": best,
-                "selection_metric": "pr_auc",
+                "selection_metric": "validation PR-AUC (tol 0.01), then validation Brier, then inference cost",
+                "tied_models": sorted(tied["model"].tolist()),
                 "threshold": float(results.set_index("model").loc[best, "threshold"]),
                 "n_train": int(len(tr)),
                 "n_val": int(len(va)),

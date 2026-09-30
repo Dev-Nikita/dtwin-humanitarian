@@ -1,0 +1,9 @@
+{
+  "alarm_rate": 0.010984386179032869,
+  "quantile": 0.9890156138209671,
+  "theta": 0.21499999999999997,
+  "n_element_slots": 142566,
+  "source": "closed-loop validation runs (reactive policy), scenarios S2_bs_overload,S3_leo_degradation,S4_disaster_collapse, seeds 9000+13k, k<6",
+  "kpi_scale_at_operating_point": 1.2445906852177613,
+  "nominal_alarm_rate": 0.25290041103769484
+}

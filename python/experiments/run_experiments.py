@@ -27,8 +27,10 @@ from ..simulator.config import EPISODE_STEPS, SCENARIO_NAMES
 from .runner import ExperimentRun, load_predictor
 
 RESULTS = os.path.join("data", "results")
-POLICIES = ["static", "reactive", "proactive_threshold", "degradation_aware",
-            "proactive_ai", "oracle"]
+DATA_DEFAULT = os.path.join("data", "processed", "telemetry_dataset.parquet")
+POLICIES = ["static", "reactive", "protection", "proactive_threshold",
+            "proactive_threshold_matched", "degradation_aware_uniform", "degradation_aware",
+            "proactive_ai_uniform", "proactive_ai", "oracle", "oracle_calibrated"]
 KEY_METRICS = [
     "service_availability",
     "resilience_loss",
@@ -41,75 +43,102 @@ KEY_METRICS = [
     "success_emergency_message",
     "avail_medical_telemetry",
     "success_command_control",
+    "success_medical_telemetry",
+    "success_voice_call",
+    "success_video_stream",
+    "success_sensor_data",
+    "success_emergency_message",
+    "mean_recovery_failure",
+    "sla_compliance",
 ]
 
 
 def prepare_context(data_path: str) -> Dict:
-    df = pd.read_parquet(data_path) if data_path.endswith(".parquet") else pd.read_csv(data_path)
-    df = select_eligible(df)
-    numeric, categorical = feature_columns(df)
-    medians = df.groupby("node_type")["latency_ms"].median().to_dict()
-    os.makedirs(RESULTS, exist_ok=True)
-    with open(os.path.join(RESULTS, "node_type_latency_median.json"), "w") as fh:
-        json.dump({k: float(v) for k, v in medians.items()}, fh, indent=2)
-    with open(os.path.join(RESULTS, "feature_columns.json"), "w") as fh:
-        json.dump(numeric + categorical, fh, indent=2)
+    if os.path.exists(data_path):
+        df = pd.read_parquet(data_path) if data_path.endswith(".parquet") else pd.read_csv(data_path)
+        df = select_eligible(df)
+        numeric, categorical = feature_columns(df)
+        medians = df.groupby("node_type")["latency_ms"].median().to_dict()
+        os.makedirs(RESULTS, exist_ok=True)
+        with open(os.path.join(RESULTS, "node_type_latency_median.json"), "w") as fh:
+            json.dump({k: float(v) for k, v in medians.items()}, fh, indent=2)
+        with open(os.path.join(RESULTS, "feature_columns.json"), "w") as fh:
+            json.dump(numeric + categorical, fh, indent=2)
+        cols = numeric + categorical
+    else:  # corpus not present: use the frozen artefacts written at training time
+        with open(os.path.join(RESULTS, "node_type_latency_median.json")) as fh:
+            medians = json.load(fh)
+        with open(os.path.join(RESULTS, "feature_columns.json")) as fh:
+            cols = json.load(fh)
     model, meta = load_predictor()
     return {
         "model": model,
         "meta": meta,
-        "feature_columns": numeric + categorical,
+        "feature_columns": cols,
         "latency_medians": {k: float(v) for k, v in medians.items()},
     }
 
 
+_CTX: Dict = {}
+
+
+def _block(args) -> tuple:
+    scenario, seed_idx, seed_offset, steps, policies = args
+    ctx = _CTX
+    seed = 1000 + 37 * seed_idx
+    rows, timelines, survivals = [], [], []
+    for policy in policies:
+        run = ExperimentRun(
+            scenario=scenario, policy=policy, seed=seed, steps=steps,
+            model=ctx["model"], feature_columns=ctx["feature_columns"],
+            latency_medians=ctx["latency_medians"], theta=float(ctx["meta"]["threshold"]),
+        )
+        summary = run.run()
+        rows.append(summary)
+        if seed_idx == seed_offset:
+            timelines.append(run.timeline_frame())
+        if seed_idx - seed_offset < 3:
+            survivals.append(pd.DataFrame({
+                "scenario": scenario, "policy": policy, "seed": seed,
+                "priority": [f.priority for f in run.all_flows],
+                "duration": [r.duration for r in run.survival],
+                "event": [r.event for r in run.survival],
+                "duration_sustained": [r.duration for r in run.survival_sustained],
+                "event_sustained": [r.event for r in run.survival_sustained],
+            }))
+    print(f"{scenario:22s} seed={seed} " + "  ".join(
+        f"{r['policy'][:10]}:A={r['service_availability']:.4f}" for r in rows), flush=True)
+    return rows, timelines, survivals
+
+
 def run_campaign(
     ctx: Dict, seeds: int, steps: int, scenarios: Optional[List[str]] = None,
-    seed_offset: int = 0, policies: Optional[List[str]] = None,
+    seed_offset: int = 0, policies: Optional[List[str]] = None, workers: int = 0,
 ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
-    rows: List[Dict] = []
-    timelines: List[pd.DataFrame] = []
-    survivals: List[pd.DataFrame] = []
-    for scenario in scenarios or SCENARIO_NAMES:
-        for seed_idx in range(seed_offset, seed_offset + seeds):
-            seed = 1000 + 37 * seed_idx
-            for policy in (policies or POLICIES):
-                run = ExperimentRun(
-                    scenario=scenario,
-                    policy=policy,
-                    seed=seed,
-                    steps=steps,
-                    model=ctx["model"],
-                    feature_columns=ctx["feature_columns"],
-                    latency_medians=ctx["latency_medians"],
-                    theta=float(ctx["meta"]["threshold"]),
-                )
-                summary = run.run()
-                rows.append(summary)
-                if seed_idx == seed_offset:
-                    timelines.append(run.timeline_frame())
-                if seed_idx - seed_offset < 3:
-                    survivals.append(pd.DataFrame({
-                        "scenario": scenario, "policy": policy, "seed": seed,
-                        "duration": [r.duration for r in run.survival],
-                        "event": [r.event for r in run.survival],
-                        "duration_sustained": [r.duration for r in run.survival_sustained],
-                        "event_sustained": [r.event for r in run.survival_sustained],
-                    }))
-            print(
-                f"{scenario:22s} seed={seed} "
-                + "  ".join(
-                    f"{r['policy'][:9]}:A={r['service_availability']:.4f}"
-                    for r in rows[-len(policies or POLICIES) :]
-                )
-            )
+    import multiprocessing as mp
+
+    global _CTX
+    _CTX = ctx
+    tasks = [(scen, k, seed_offset, steps, list(policies or POLICIES))
+             for scen in (scenarios or SCENARIO_NAMES)
+             for k in range(seed_offset, seed_offset + seeds)]
+    workers = workers or max(1, (os.cpu_count() or 1))
+    if workers > 1:
+        with mp.get_context("fork").Pool(workers) as pool:
+            results = pool.map(_block, tasks, chunksize=1)
+    else:
+        results = [_block(t) for t in tasks]
+    rows = [r for res in results for r in res[0]]
+    timelines = [t for res in results for t in res[1]]
+    survivals = [t for res in results for t in res[2]]
     tl = pd.concat(timelines, ignore_index=True) if timelines else pd.DataFrame()
     sv = pd.concat(survivals, ignore_index=True) if survivals else pd.DataFrame()
     return pd.DataFrame(rows), tl, sv
 
 
 def aggregate(runs: pd.DataFrame) -> pd.DataFrame:
-    metrics = [c for c in runs.columns if runs[c].dtype != object and c not in ("seed", "steps")]
+    metrics = [c for c in runs.columns if pd.api.types.is_numeric_dtype(runs[c])
+               and not pd.api.types.is_bool_dtype(runs[c]) and c not in ("seed", "steps")]
     agg = runs.groupby(["scenario", "policy"])[metrics].agg(["mean", "std"])
     agg.columns = [f"{a}_{b}" for a, b in agg.columns]
     return agg.reset_index()
@@ -198,6 +227,57 @@ def significance(runs: pd.DataFrame, reference: str = "reactive") -> pd.DataFram
     return df.sort_values(["family", "p_value_ttest"]).reset_index(drop=True)
 
 
+CONTRASTS = [
+    ("proactive_ai", "degradation_aware"),
+    ("proactive_ai", "protection"),
+    ("proactive_ai", "proactive_ai_uniform"),
+    ("degradation_aware", "degradation_aware_uniform"),
+    ("proactive_ai_uniform", "degradation_aware_uniform"),
+    ("proactive_threshold_matched", "reactive"),
+    ("proactive_threshold_matched", "proactive_ai"),
+    ("oracle_calibrated", "proactive_ai"),
+    ("oracle_calibrated", "oracle"),
+    ("protection", "reactive"),
+    ("degradation_aware", "reactive"),
+]
+
+
+def contrasts(runs: pd.DataFrame, pairs=CONTRASTS, metrics=None) -> pd.DataFrame:
+    """Targeted paired contrasts between ablation policies (all exploratory)."""
+    metrics = metrics or KEY_METRICS + ["mean_recovery_failure", "proactive_reroutes_total"]
+    rows = []
+    for scenario in runs["scenario"].unique():
+        sub = runs[runs["scenario"] == scenario]
+        for a_pol, b_pol in pairs:
+            a = sub[sub["policy"] == a_pol].sort_values("seed")
+            b = sub[sub["policy"] == b_pol].sort_values("seed")
+            if a.empty or b.empty:
+                continue
+            for metric in dict.fromkeys(metrics):
+                if metric not in sub.columns:
+                    continue
+                x = a[metric].to_numpy(float)
+                y = b[metric].to_numpy(float)
+                n = min(len(x), len(y))
+                d = x[:n] - y[:n]
+                if n < 3 or np.allclose(d, 0):
+                    continue
+                sd = d.std(ddof=1)
+                half = stats.t.ppf(0.975, n - 1) * sd / np.sqrt(n)
+                t_stat, t_p = stats.ttest_rel(x[:n], y[:n])
+                try:
+                    w_p = stats.wilcoxon(x[:n], y[:n]).pvalue
+                except ValueError:
+                    w_p = np.nan
+                rows.append({"scenario": scenario, "policy": a_pol, "reference": b_pol,
+                             "metric": metric, "mean_policy": x[:n].mean(),
+                             "mean_reference": y[:n].mean(), "mean_difference": d.mean(),
+                             "ci95_low": d.mean() - half, "ci95_high": d.mean() + half,
+                             "cohens_dz": d.mean() / sd if sd > 0 else np.nan,
+                             "p_value_ttest": t_p, "p_value_wilcoxon": w_p, "n_pairs": n})
+    return pd.DataFrame(rows)
+
+
 def threshold_sweep(ctx: Dict, steps: int, seeds: int = 3,
                     scenarios: Optional[List[str]] = None) -> pd.DataFrame:
     """Sensitivity of the proposed policy to the risk-budget scale."""
@@ -247,6 +327,7 @@ def main() -> None:
         runs = pd.read_csv(runs_path)
         aggregate(runs).to_csv(os.path.join(RESULTS, "policy_comparison.csv"), index=False)
         significance(runs).to_csv(os.path.join(RESULTS, "significance_tests.csv"), index=False)
+        contrasts(runs).to_csv(os.path.join(RESULTS, "contrasts.csv"), index=False)
         print(runs.pivot_table(index="scenario", columns="policy",
                                values="service_availability").round(4))
         return
@@ -285,6 +366,7 @@ def main() -> None:
         timeline.to_csv(timeline_path, index=False)
     aggregate(runs).to_csv(os.path.join(RESULTS, "policy_comparison.csv"), index=False)
     significance(runs).to_csv(os.path.join(RESULTS, "significance_tests.csv"), index=False)
+    contrasts(runs).to_csv(os.path.join(RESULTS, "contrasts.csv"), index=False)
 
     print("\n=== mean service availability ===")
     print(runs.pivot_table(index="scenario", columns="policy", values="service_availability").round(4))

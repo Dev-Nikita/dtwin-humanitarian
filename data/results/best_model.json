@@ -1,10 +1,13 @@
 {
   "best_model": "logistic_regression",
-  "selection_metric": "pr_auc",
-  "threshold": 0.145,
-  "n_train": 166059,
-  "n_val": 66821,
-  "n_test": 33120,
-  "positive_rate_test": 0.01198671497584541,
+  "selection_metric": "validation PR-AUC (tol 0.01), then validation Brier, then inference cost",
+  "tied_models": [
+    "logistic_regression"
+  ],
+  "threshold": 0.21499999999999997,
+  "n_train": 166028,
+  "n_val": 65965,
+  "n_test": 33342,
+  "positive_rate_test": 0.00893767620418691,
   "n_features": 57
 }
