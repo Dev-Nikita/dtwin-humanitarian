@@ -30,7 +30,9 @@ RESULTS = os.path.join("data", "results")
 DATA_DEFAULT = os.path.join("data", "processed", "telemetry_dataset.parquet")
 POLICIES = ["static", "reactive", "protection", "proactive_threshold",
             "proactive_threshold_matched", "degradation_aware_uniform", "degradation_aware",
-            "proactive_ai_uniform", "proactive_ai", "oracle", "oracle_calibrated"]
+            "proactive_ai_uniform", "proactive_ai", "oracle", "oracle_calibrated",
+            "protection_index", "protection_predictive", "protection_oracle",
+            "protection_predictive_mig"]
 KEY_METRICS = [
     "service_availability",
     "resilience_loss",
@@ -239,6 +241,13 @@ CONTRASTS = [
     ("oracle_calibrated", "oracle"),
     ("protection", "reactive"),
     ("degradation_aware", "reactive"),
+    ("proactive_ai", "reactive"),
+    ("protection_predictive", "protection"),
+    ("protection_predictive", "protection_index"),
+    ("protection_oracle", "protection_predictive"),
+    ("protection_predictive", "proactive_ai"),
+    ("protection_predictive_mig", "protection_predictive"),
+    ("protection_predictive", "reactive"),
 ]
 
 

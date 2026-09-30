@@ -1,0 +1,5 @@
+policy,command control A,command control SLA-A,emergency message A,emergency message SLA-A,medical telemetry A,medical telemetry SLA-A,voice call A,voice call SLA-A,video stream A,video stream SLA-A,sensor data A,sensor data SLA-A
+P1,98.7,16.14,98.75,51.67,98.0,25.77,96.41,32.62,95.63,48.18,98.76,78.96
+P1b,98.72,16.12,98.75,51.64,98.24,25.81,97.04,32.75,96.68,48.61,98.76,78.96
+P4,98.27,15.6,98.77,50.14,97.64,25.48,96.55,32.47,96.3,48.03,98.76,77.39
+P6,98.72,16.12,98.75,51.5,98.31,25.73,97.16,32.6,96.92,48.45,98.78,78.72

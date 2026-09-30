@@ -458,11 +458,12 @@ PREAMBLE = r"""%% Elsevier CAS template (els-cas-templates), double-column artic
 \def\floatpagepagefraction{1}
 \def\textpagefraction{.001}
 
-\shorttitle{Predictive resilience of hybrid 5G/6G-class and LEO satellite networks}
+\shorttitle{Where does predictive resilience come from?}
 \shortauthors{N. Tarasov and R. Zinko}
 
-\title[mode=title]{Predictive Resilience of Hybrid 5G/6G-Class and LEO Satellite Networks:
-A Digital-Twin Framework for Failure Anticipation and Risk-Aware Recovery}
+\title[mode=title]{Where Does Predictive Resilience Come From? A Simulation-Based Digital-Twin
+Assessment of Failure Anticipation, Protection and Risk-Aware Recovery in Hybrid
+5G/6G-Class and LEO Satellite Networks}
 
 %% First author
 \author[1]{Nikita Tarasov}[orcid=0000-0003-1870-3436]
@@ -533,8 +534,9 @@ PREVIEW_PREAMBLE = r"""%% Dependency-free preview build.
 \newenvironment{keywords}{\par\medskip\noindent\textbf{Keywords:}\ }{\par\medskip}
 \let\WriteBookmarks\relax
 
-\title{Predictive Resilience of Hybrid 5G/6G-Class and LEO Satellite Networks:
-A Digital-Twin Framework for Failure Anticipation and Risk-Aware Recovery}
+\title{Where Does Predictive Resilience Come From? A Simulation-Based Digital-Twin
+Assessment of Failure Anticipation, Protection and Risk-Aware Recovery in Hybrid
+5G/6G-Class and LEO Satellite Networks}
 \author{Nikita Tarasov\thanks{Corresponding author: dev.nikita@outlook.com.
 ORCID 0000-0003-1870-3436.} \and Roman Zinko\thanks{ORCID 0000-0002-3275-8188.}}
 \date{Department of Computer-Aided Design Systems, Lviv Polytechnic National
@@ -641,7 +643,12 @@ def build(docx_path: str, out_dir: str, figdir: str) -> None:
             # LaTeX class then numbers a second time ("Figure 1: 1. ...").
             caption = esc(re.sub(r"^(?:Fig\.|Figure|Table)\s+\d+[.:]\s*", "", text))
             if kind == "figure":
-                name = FIGURE_ORDER[fig_idx] if fig_idx < len(FIGURE_ORDER) else None
+                order = FIGURE_ORDER
+                _fj = docx_path + ".figures.json"
+                if os.path.exists(_fj):
+                    import json as _json
+                    order = _json.load(open(_fj))
+                name = order[fig_idx] if fig_idx < len(order) else None
                 fig_idx += 1
                 if name:
                     src = os.path.join(figdir, name)

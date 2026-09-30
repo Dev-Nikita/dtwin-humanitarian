@@ -1,0 +1,13 @@
+scenario,policy,availability [%],resilience loss,vs P1 [%],95% CI of difference,migrations
+S3 NTN degradation,P1,96.35,17.21,-,-,0.0
+S3 NTN degradation,P1b,96.48,16.56,-3.8,"[-0.96, -0.35]",0.0
+S3 NTN degradation,P3,96.29,17.52,1.8,"[0.06, 0.56]",23.8
+S3 NTN degradation,P4,96.42,16.9,-1.8,"[-0.71, 0.09]",20.4
+S3 NTN degradation,P6i,96.54,16.29,-5.3,"[-1.28, -0.56]",0.0
+S3 NTN degradation,P6,96.54,16.28,-5.4,"[-1.30, -0.56]",0.0
+S4 infrastructure collapse,P1,90.74,46.59,-,-,0.0
+S4 infrastructure collapse,P1b,91.2,44.29,-4.9,"[-2.77, -1.83]",0.0
+S4 infrastructure collapse,P3,90.58,47.22,1.4,"[0.20, 1.06]",183.4
+S4 infrastructure collapse,P4,91.11,44.6,-4.3,"[-2.47, -1.51]",128.0
+S4 infrastructure collapse,P6i,91.47,42.78,-8.2,"[-4.60, -3.03]",0.0
+S4 infrastructure collapse,P6,91.52,42.53,-8.7,"[-4.94, -3.19]",0.0

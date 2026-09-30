@@ -231,6 +231,17 @@ def run_ood() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # 3. prediction-horizon sweep
 # ---------------------------------------------------------------------------
+_HZ: Dict = {}
+
+
+def _horizon_job(args):
+    pol, k = args
+    z = _HZ
+    return ExperimentRun("S4_disaster_collapse", pol, 3000 + 31 * k, steps=500,
+                         model=z["model"], feature_columns=z["cols"], latency_medians=z["med"],
+                         theta=z["theta"], horizon=z["H"]).run()
+
+
 def run_horizon(horizons: Tuple[int, ...] = (3, 5, 10, 15, 20, 30),
                 closed_loop_seeds: int = 12, append: bool = False) -> pd.DataFrame:
     raw = pd.read_parquet(DATA)
@@ -263,31 +274,32 @@ def run_horizon(horizons: Tuple[int, ...] = (3, 5, 10, 15, 20, 30),
         model = CalibratedClassifierCV(pipe, method="isotonic", cv="prefit")
         model.fit(X[m_va], yy[m_va])
 
-        avail, rec, lead, loss, rate, lead_mean = [], [], [], [], [], []
-        for k in range(closed_loop_seeds):
-            # The lead-time tracker is given the swept horizon, so the reported
-            # lead time obeys 0 < T_lead <= H of Eq. (18) at every H (Reviewers
-            # 3.2, 5.1). The table of the first submission was produced by an
-            # earlier tracker that matched alarms without the horizon bound.
-            run = ExperimentRun("S4_disaster_collapse", "proactive_ai", 3000 + 31 * k,
-                                steps=500, model=model, feature_columns=numeric + ["node_type"],
-                                latency_medians=ctx_medians, theta=theta, horizon=H)
-            s = run.run()
-            avail.append(s["service_availability"])
-            rec.append(s["mean_recovery_steps"])
-            loss.append(s["resilience_loss"])
-            lead.append(s.get("lead_time_median", np.nan))
-            lead_mean.append(s.get("lead_time_mean", np.nan))
-            rate.append(s.get("anticipation_rate", np.nan))
-            assert not (s.get("lead_time_p75", 0) > H), "lead time exceeds the horizon"
-        row.update({
-            "cl_availability": float(np.mean(avail)),
-            "cl_resilience_loss": float(np.mean(loss)),
-            "cl_recovery": float(np.mean(rec)),
-            "cl_lead_time_median": float(np.nanmean(lead)),
-            "cl_lead_time_mean": float(np.nanmean(lead_mean)),
-            "cl_anticipation_rate": float(np.nanmean(rate)),
-        })
+        # The lead-time tracker is given the swept horizon, so the reported lead
+        # time obeys 0 < T_lead <= H of Eq. (18) at every H (Reviewers 3.2, 5.1).
+        # The table of the first submission was produced by an earlier tracker
+        # that matched alarms without the horizon bound.
+        global _HZ
+        _HZ = dict(model=model, cols=numeric + ["node_type"], med=ctx_medians,
+                   theta=theta, H=H)
+        import multiprocessing as mp
+        jobs = [(pol, k) for pol in ("proactive_ai", "protection_predictive")
+                for k in range(closed_loop_seeds)]
+        with mp.get_context("fork").Pool(os.cpu_count() or 1) as pool:
+            res = pool.map(_horizon_job, jobs, chunksize=1)
+        for pol, tag in (("proactive_ai", "cl"), ("protection_predictive", "p6")):
+            ss = [r for (p_, _), r in zip(jobs, res) if p_ == pol]
+            for s in ss:
+                assert not (s.get("lead_time_p75", 0) > H), "lead time exceeds the horizon"
+            row.update({
+                f"{tag}_availability": float(np.mean([s["service_availability"] for s in ss])),
+                f"{tag}_resilience_loss": float(np.mean([s["resilience_loss"] for s in ss])),
+                f"{tag}_recovery": float(np.mean([s["mean_recovery_steps"] for s in ss])),
+                f"{tag}_recovery_failure": float(np.mean([s["mean_recovery_failure"] for s in ss])),
+                f"{tag}_migrations": float(np.mean([s["proactive_reroutes_total"] for s in ss])),
+                f"{tag}_lead_time_median": float(np.nanmean([s.get("lead_time_median", np.nan) for s in ss])),
+                f"{tag}_lead_time_mean": float(np.nanmean([s.get("lead_time_mean", np.nan) for s in ss])),
+                f"{tag}_anticipation_rate": float(np.nanmean([s.get("anticipation_rate", np.nan) for s in ss])),
+            })
         rows.append(row)
         print(f"H={H:2d} PR-AUC={row['pr_auc']:.4f} recall={row['recall']:.3f} "
               f"avail={row['cl_availability']:.4f} rec={row['cl_recovery']:.2f}")

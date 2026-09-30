@@ -1,0 +1,25 @@
+definition,scenario,policy,S(10),S(20),S(40),flows
+any,S3 NTN degradation,P1,0.984,0.9684,0.9291,3862
+any,S3 NTN degradation,P1b,0.984,0.9684,0.9291,3862
+any,S3 NTN degradation,P4,0.9718,0.9404,0.8702,3862
+any,S3 NTN degradation,P6,0.984,0.9684,0.9291,3862
+any,S4 infrastructure collapse,P1,0.9831,0.9428,0.8649,6641
+any,S4 infrastructure collapse,P1b,0.9831,0.9428,0.864,6641
+any,S4 infrastructure collapse,P4,0.954,0.8764,0.7578,6641
+any,S4 infrastructure collapse,P6,0.9829,0.9431,0.867,6641
+any,S6 common cause*,P1,0.9685,0.9473,0.8967,5121
+any,S6 common cause*,P1b,0.9685,0.9473,0.8967,5121
+any,S6 common cause*,P4,0.9685,0.9473,0.8967,5121
+any,S6 common cause*,P6,0.9685,0.9473,0.8967,5121
+sustained (>= 2 slots),S3 NTN degradation,P1,0.9846,0.9711,0.9331,3862
+sustained (>= 2 slots),S3 NTN degradation,P1b,0.9846,0.9711,0.9331,3862
+sustained (>= 2 slots),S3 NTN degradation,P4,0.9789,0.9606,0.9254,3862
+sustained (>= 2 slots),S3 NTN degradation,P6,0.9846,0.9711,0.9331,3862
+sustained (>= 2 slots),S4 infrastructure collapse,P1,0.9836,0.9459,0.8759,6641
+sustained (>= 2 slots),S4 infrastructure collapse,P1b,0.9836,0.9459,0.8751,6641
+sustained (>= 2 slots),S4 infrastructure collapse,P4,0.9687,0.9135,0.8399,6641
+sustained (>= 2 slots),S4 infrastructure collapse,P6,0.9834,0.9462,0.8774,6641
+sustained (>= 2 slots),S6 common cause*,P1,0.9708,0.9506,0.9062,5121
+sustained (>= 2 slots),S6 common cause*,P1b,0.9708,0.9506,0.9062,5121
+sustained (>= 2 slots),S6 common cause*,P4,0.9708,0.9506,0.9062,5121
+sustained (>= 2 slots),S6 common cause*,P6,0.9708,0.9506,0.9062,5121
