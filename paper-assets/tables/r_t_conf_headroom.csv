@@ -1,0 +1,9 @@
+scenario,contrast,mean difference,95% CI,relative [%]
+S3 NTN degradation,P6o - P6,-0.014,"[-0.029, 0.002]",-0.13
+S3 NTN degradation,P6o - P6i,-0.013,"[-0.028, 0.003]",-0.12
+S4 infrastructure collapse,P6o - P6,-0.127,"[-0.175, -0.078]",-1.08
+S4 infrastructure collapse,P6o - P6i,-0.117,"[-0.172, -0.063]",-1.0
+S5 handover dynamics*,P6o - P6,0.002,"[-0.002, 0.005]",0.11
+S5 handover dynamics*,P6o - P6i,-0.001,"[-0.005, 0.003]",-0.05
+S6 common cause*,P6o - P6,-0.308,"[-0.378, -0.238]",-1.52
+S6 common cause*,P6o - P6i,-0.221,"[-0.277, -0.165]",-1.1

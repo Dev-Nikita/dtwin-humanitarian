@@ -1,0 +1,7 @@
+scenario,standby model,P1,P1b,P6i,P6,P6 - P1b,infeasible switches / run (P1b)
+S4 infrastructure collapse,feasible,16.14,13.24,12.59,12.62,"-0.63 [-0.90, -0.36]",8.42
+S4 infrastructure collapse,reserved,16.14,12.63,11.85,11.86,"-0.77 [-1.05, -0.50]",0.0
+S4 infrastructure collapse,optimistic,16.14,12.52,11.74,11.73,"-0.78 [-1.12, -0.45]",0.0
+S6 common cause*,feasible,30.12,26.13,25.38,25.45,"-0.68 [-0.92, -0.44]",0.83
+S6 common cause*,reserved,30.12,26.15,25.54,25.59,"-0.56 [-0.75, -0.36]",0.0
+S6 common cause*,optimistic,30.12,26.02,25.21,25.28,"-0.75 [-1.02, -0.48]",0.0

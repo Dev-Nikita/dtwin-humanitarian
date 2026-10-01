@@ -1,0 +1,25 @@
+seeds,scenario,policy,triggers per run,already failed (detection-delay bypass) [%],fails within H [%],"degraded, no failure within H [%]",false alarm [%]
+development,S3 NTN degradation,P3,13.7,46.3,21.0,32.6,0.0
+development,S3 NTN degradation,P4,30.0,12.0,22.9,65.1,0.0
+development,S3 NTN degradation,P2m,14.6,33.7,24.0,38.3,4.0
+development,S3 NTN degradation,P5c,19.6,10.8,37.2,52.0,0.0
+development,S4 infrastructure collapse,P3,113.4,54.4,14.4,31.1,0.0
+development,S4 infrastructure collapse,P4,184.6,19.9,26.8,53.3,0.0
+development,S4 infrastructure collapse,P2m,133.8,38.2,18.2,20.6,23.0
+development,S4 infrastructure collapse,P5c,171.8,13.1,34.4,52.4,0.0
+development,S5 handover dynamics*,P3,23.8,2.3,1.4,24.7,71.6
+development,S5 handover dynamics*,P4,9.4,5.3,3.1,81.3,10.2
+development,S5 handover dynamics*,P2m,37.0,1.1,1.0,17.3,80.5
+development,S5 handover dynamics*,P5c,0.8,70.0,25.0,5.0,0.0
+development,S6 common cause*,P3,79.1,95.2,0.6,4.2,0.0
+development,S6 common cause*,P4,76.1,99.6,0.2,0.2,0.1
+development,S6 common cause*,P2m,88.4,83.4,0.7,0.6,15.4
+development,S6 common cause*,P5c,70.3,99.3,0.6,0.1,0.0
+confirmation,S3 NTN degradation,P3,12.2,46.2,15.1,38.7,0.0
+confirmation,S3 NTN degradation,P4,25.4,7.6,25.2,67.2,0.0
+confirmation,S4 infrastructure collapse,P3,98.3,54.8,15.4,29.8,0.1
+confirmation,S4 infrastructure collapse,P4,149.7,20.9,27.1,52.0,0.0
+confirmation,S5 handover dynamics*,P3,23.0,1.6,0.3,19.3,78.9
+confirmation,S5 handover dynamics*,P4,7.5,2.7,3.1,80.7,13.5
+confirmation,S6 common cause*,P3,67.3,90.3,1.9,7.8,0.0
+confirmation,S6 common cause*,P4,63.3,99.1,0.1,0.8,0.0

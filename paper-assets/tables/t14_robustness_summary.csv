@@ -4,6 +4,6 @@ leave one scenario out,S3_leo_degradation,PR-AUC lift,15.16
 leave one scenario out,S4_disaster_collapse,PR-AUC lift,4.99
 unseen mechanism,S5_leo_handover,PR-AUC lift,22.36
 unseen mechanism,S6_common_cause,PR-AUC lift,1.56
-migration cost,S3_leo_degradation,break-even cost [slots],3.0
+migration cost,S3_leo_degradation,break-even cost [slots],5.0
 migration cost,S4_disaster_collapse,break-even cost [slots],5.0
-prediction horizon,closed-loop optimum,H [slots],3.0
+prediction horizon,closed-loop optimum,H [slots],5.0

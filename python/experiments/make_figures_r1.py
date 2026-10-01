@@ -576,6 +576,162 @@ def f19_seed_convergence_r1():
     _save(fig, "f19_seed_convergence.png")
 
 
+def _pfmt(v):
+    return "<0.0001" if v < 1e-4 else f"{v:.4f}"
+
+
+def r_confirmation():
+    """Tables and figure of the frozen confirmation experiment (R1_CONFIRMATION_PROTOCOL.md)."""
+    path = os.path.join(RESULTS, "confirmation_tests.csv")
+    if not os.path.exists(path):
+        print("confirmation results missing")
+        return
+    t = pd.read_csv(path)
+    eq = pd.read_csv(os.path.join(RESULTS, "confirmation_equivalence.csv"))
+    conf = pd.read_csv(os.path.join(RESULTS, "confirmation.csv"))
+
+    def lab(c):
+        a, b = [x.strip() for x in c.split(" - ")]
+        return f"{SHORT[a]} - {SHORT[b]}"
+
+    rows = []
+    for _, r in t[t.family != "exploratory"].iterrows():
+        rows.append({"family": r.family.split(" ")[0], "scenario": SCEN[r.scenario],
+                     "contrast": lab(r.contrast), "mean difference": round(r.mean_diff, 3),
+                     "95% CI": f"[{r.ci_low:.2f}, {r.ci_high:.2f}]",
+                     "relative [%]": round(r.rel_pct, 1), "Cohen d_z": round(r.dz, 2),
+                     "Wilcoxon p": _pfmt(r.p_wilcoxon), "Holm p": _pfmt(r.p_holm)})
+    pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_conf_tests.csv"), index=False)
+
+    rows = []
+    for _, r in eq.iterrows():
+        rows.append({"scenario": SCEN[r.scenario], "contrast": lab(r.contrast),
+                     "margin": f"±{r.margin:.2f}", "mean difference": round(r.mean_diff, 3),
+                     "90% CI": f"[{r.ci90_low:.3f}, {r.ci90_high:.3f}]",
+                     "TOST p": _pfmt(r.p_tost),
+                     "equivalent": "yes" if r.equivalent else "not established"})
+    pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_conf_equiv.csv"), index=False)
+
+    rows = []
+    for _, r in t[(t.family == "exploratory") & t.contrast.str.startswith("protection_oracle")].iterrows():
+        rows.append({"scenario": SCEN[r.scenario], "contrast": lab(r.contrast),
+                     "mean difference": round(r.mean_diff, 3),
+                     "95% CI": f"[{r.ci_low:.3f}, {r.ci_high:.3f}]",
+                     "relative [%]": round(r.rel_pct, 2)})
+    pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_conf_headroom.csv"), index=False)
+
+    pols = ["reactive", "protection", "degradation_aware", "proactive_ai", "protection_index",
+            "protection_predictive", "protection_oracle"]
+    rows = []
+    for pol in pols:
+        row = {"policy": LABEL[pol]}
+        for s in sorted(conf.scenario.unique()):
+            m, h = _ci(conf[(conf.scenario == s) & (conf.policy == pol)].resilience_loss)
+            row[SCEN[s].split(" ")[0]] = f"{m:.2f} ± {h:.2f}"
+        rows.append(row)
+    pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_conf_means.csv"), index=False)
+
+    # figure: paired contrasts of B1 and B2 with Holm-adjusted significance
+    order = ["protection - reactive", "proactive_ai - reactive", "proactive_ai - protection",
+             "protection_predictive - proactive_ai", "protection_predictive - protection"]
+    scen = sorted(conf.scenario.unique())
+    fig, axes = plt.subplots(1, len(scen), figsize=(12.0, 3.2), sharey=True)
+    cols = ["#eb6834", "#eda100", "#8a8a8a", "#4a3aa7", "#008300"]
+    for ax, s in zip(axes, scen):
+        for i, c in enumerate(order):
+            r = t[(t.scenario == s) & (t.contrast == c) & (t.family != "exploratory")]
+            if r.empty:
+                ax.text(0, i, "not tested", fontsize=6.5, va="center", ha="center",
+                        color="#8a8a8a")
+                continue
+            r = r.iloc[0]
+            m = 100 * r.mean_diff / r.mean_b
+            lo, hi = 100 * r.ci_low / r.mean_b, 100 * r.ci_high / r.mean_b
+            ax.barh(i, m, 0.65, color=cols[i], edgecolor="white", linewidth=1.2,
+                    alpha=1.0 if r.p_holm < 0.05 else 0.35)
+            ax.errorbar(m, i, xerr=[[m - lo], [hi - m]], color="#333333", capsize=2.5, lw=1)
+            ax.text(hi + 0.8 if m >= 0 else lo - 0.8, i, f"{m:+.1f}%",
+                    ha="left" if m >= 0 else "right", va="center", fontsize=6.6)
+        ax.axvline(0, color="k", lw=0.8)
+        ax.set_yticks(range(len(order)))
+        ax.set_yticklabels([lab(c) for c in order], fontsize=7.5)
+        ax.invert_yaxis()
+        ax.set_xlim(-33, 16)
+        ax.set_title(SCEN[s], fontsize=8.5)
+        ax.set_xlabel("paired difference [% of second policy]", fontsize=7.5)
+    fig.suptitle("Frozen confirmation on 64 new seeds: paired contrasts in resilience loss "
+                 "(95% CI; faded = not significant after Holm)", fontsize=9)
+    _save(fig, "r04_confirmation.png")
+
+
+def r_migration_classes():
+    """Ground-truth classification of migration triggers (development campaign + confirmation)."""
+    rows = []
+    keys = ["mig_trigger_already_failed", "mig_trigger_fails_within_H",
+            "mig_trigger_degraded_no_failure", "mig_trigger_false_alarm"]
+    names = ["already failed (detection-delay bypass)", "fails within H",
+             "degraded, no failure within H", "false alarm"]
+    for src, df in (("development", _runs()),
+                    ("confirmation", pd.read_csv(os.path.join(RESULTS, "confirmation.csv")))):
+        for s in ["S3_leo_degradation", "S4_disaster_collapse", "S5_leo_handover",
+                  "S6_common_cause"]:
+            for pol in ["degradation_aware", "proactive_ai", "proactive_threshold_matched",
+                        "oracle_calibrated"]:
+                sub = df[(df.scenario == s) & (df.policy == pol)]
+                if sub.empty or keys[0] not in sub:
+                    continue
+                tot = sub[keys].sum(axis=1).mean()
+                row = {"seeds": src, "scenario": SCEN[s], "policy": SHORT[pol],
+                       "triggers per run": round(tot, 1)}
+                for k, n in zip(keys, names):
+                    row[n + " [%]"] = round(100 * sub[k].mean() / tot, 1) if tot else 0.0
+                rows.append(row)
+    pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_migration_classes.csv"), index=False)
+
+
+def r_protection_modes():
+    path = os.path.join(RESULTS, "protection_modes.csv")
+    if not os.path.exists(path):
+        print("protection_modes missing")
+        return
+    d = pd.read_csv(path)
+    mcol = "protection_mode_setting"
+    rows = []
+    for s in ["S4_disaster_collapse", "S6_common_cause"]:
+        for mode in ("feasible", "reserved", "optimistic"):
+            sub = d[(d.scenario == s) & (d[mcol] == mode)]
+            row = {"scenario": SCEN[s], "standby model": mode}
+            for pol in ("reactive", "protection", "protection_index", "protection_predictive"):
+                row[SHORT[pol]] = round(sub[sub.policy == pol].resilience_loss.mean(), 2)
+            r = _paired(sub, "protection_predictive", "protection", "resilience_loss")
+            row["P6 - P1b"] = f"{r['diff']:+.2f} [{r['lo']:.2f}, {r['hi']:.2f}]"
+            row["infeasible switches / run (P1b)"] = round(
+                sub[sub.policy == "protection"].switch_infeasible.mean(), 2)
+            rows.append(row)
+    pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_protection_modes.csv"), index=False)
+
+
+def r_accounting_check():
+    path = os.path.join(RESULTS, "accounting_check.csv")
+    if not os.path.exists(path):
+        return
+    d = pd.read_csv(path)
+    rows = []
+    for s in ["S3_leo_degradation", "S4_disaster_collapse", "S6_common_cause"]:
+        sub = d[d.scenario == s]
+        p1 = sub[(sub.policy == "reactive")].resilience_loss.mean()
+        for pol in ("degradation_aware", "proactive_ai", "proactive_threshold_matched",
+                    "oracle_calibrated"):
+            row = {"scenario": SCEN[s], "policy": SHORT[pol]}
+            for flag, name in ((False, "dead-path migration charged C_m"),
+                               (True, "dead-path migration charged C_r")):
+                v = sub[(sub.policy == pol) & (sub.flag == flag)].resilience_loss.mean()
+                row[name] = round(v, 2)
+                row[name + " vs P1 [%]"] = round(100 * (v - p1) / p1, 1)
+            rows.append(row)
+    pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_accounting.csv"), index=False)
+
+
 def main():
     MF.f03_degradation_trace()
     f04_decision_r1()
@@ -593,6 +749,8 @@ def main():
     MF.f14_noise()
     r_sweeps()
     f19_seed_convergence_r1()
+    for fn in (r_confirmation, r_migration_classes, r_protection_modes, r_accounting_check):
+        fn()
     try:
         MF.tables()
     except Exception as exc:  # legacy summary tables are optional

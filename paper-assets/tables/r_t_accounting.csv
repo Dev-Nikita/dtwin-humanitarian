@@ -1,0 +1,13 @@
+scenario,policy,dead-path migration charged C_m,dead-path migration charged C_m vs P1 [%],dead-path migration charged C_r,dead-path migration charged C_r vs P1 [%]
+S3 NTN degradation,P3,10.96,-10.5,11.94,-2.6
+S3 NTN degradation,P4,11.13,-9.1,11.66,-4.8
+S3 NTN degradation,P2m,11.12,-9.2,11.76,-4.0
+S3 NTN degradation,P5c,11.08,-9.6,11.4,-6.9
+S4 infrastructure collapse,P3,10.78,-38.9,15.69,-11.1
+S4 infrastructure collapse,P4,11.41,-35.4,14.31,-19.0
+S4 infrastructure collapse,P2m,11.16,-36.8,15.25,-13.6
+S4 infrastructure collapse,P5c,11.32,-35.9,13.05,-26.1
+S6 common cause*,P3,22.63,-22.8,27.36,-6.7
+S6 common cause*,P4,22.71,-22.6,27.54,-6.1
+S6 common cause*,P2m,22.73,-22.5,27.48,-6.3
+S6 common cause*,P5c,22.49,-23.3,26.75,-8.8

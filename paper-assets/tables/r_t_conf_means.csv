@@ -1,0 +1,8 @@
+policy,S3,S4,S5,S6
+P1 reactive restoration,11.36 ± 1.16,14.89 ± 1.51,1.47 ± 0.55,24.25 ± 3.41
+P1b 1:1 protection,10.62 ± 1.14,12.13 ± 1.51,1.42 ± 0.55,21.02 ± 3.14
+P3 degradation-aware migration,11.01 ± 1.16,13.22 ± 1.50,1.71 ± 0.54,22.64 ± 3.28
+P4 predictive migration,10.64 ± 1.15,11.76 ± 1.54,1.51 ± 0.54,22.83 ± 3.30
+P6i protection + index,10.51 ± 1.13,11.69 ± 1.49,1.43 ± 0.55,20.20 ± 3.11
+P6 predictive protection,10.51 ± 1.14,11.70 ± 1.49,1.42 ± 0.55,20.29 ± 3.12
+P6o protection + perfect state,10.50 ± 1.14,11.57 ± 1.48,1.42 ± 0.55,19.98 ± 3.10

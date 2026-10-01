@@ -2,7 +2,7 @@ scenario,anticipation rate,median lead time [slots],mean lead time [slots],share
 S1 nominal,—,—,—,—,—,0.0,0.0
 S2 access overload,0.79,2.88,3.14,0.47,0.2,3.17,1.0
 S3 NTN degradation,0.68,4.96,5.11,0.7,0.48,8.79,4.04
-S4 infrastructure collapse,0.6,5.29,5.51,0.75,0.56,13.79,9.25
+S4 infrastructure collapse,0.6,5.31,5.54,0.75,0.57,13.79,9.25
 S5 handover dynamics*,0.1,4.39,4.39,0.5,0.5,0.5,3.29
 S6 common cause*,0.01,4.62,4.62,0.5,0.5,0.21,23.96
 S7 external NTN*,0.5,7.21,6.77,0.89,0.72,4.04,3.71
