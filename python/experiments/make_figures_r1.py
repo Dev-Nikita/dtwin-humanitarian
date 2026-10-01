@@ -181,7 +181,10 @@ def r_main_tables():
              ("protection_predictive", "protection_index"),
              ("protection_oracle", "protection_predictive"),
              ("oracle_calibrated", "proactive_ai"),
-             ("protection_predictive_mig", "protection_predictive")]
+             ("protection_predictive_mig", "protection_predictive"),
+             ("proactive_ai_uniform", "degradation_aware_uniform"),
+             ("degradation_aware", "degradation_aware_uniform"),
+             ("proactive_ai", "proactive_ai_uniform")]
     rows = []
     for s in STRESSED[1:]:
         sub = runs[runs.scenario == s]

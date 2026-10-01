@@ -26,7 +26,8 @@ BANNED = [
     r"is the best policy", r"the best policy at every", r"optimal policy", r"\bgeneralis(e|es|ed)\b",
     r"never worse", r"never hurts", r"stays behind plain protection",
     r"does better than predictive migration", r"two per cent of one another",
-    r"previously reported", r"anticipation drives",
+    r"previously reported", r"anticipation drives", r"pre-?registered",
+    r"does not hold", r"pays most reliably through protection",
 ]
 # phrases allowed when negated / quoted as limitation
 ALLOW = [r"not an external validation", r"not external validation",

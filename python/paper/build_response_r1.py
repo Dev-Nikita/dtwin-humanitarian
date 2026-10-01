@@ -181,9 +181,10 @@ def build_texts():
         "under common-cause disruption (primary family B1, both Holm p < 0.0001). For that "
         "role a contemporaneous degradation index is "
         + ("statistically equivalent to " if eq_all else "practically indistinguishable from ")
-        + f"the learned predictor (TOST, family B3), and perfect state adds at most {hrmax:.1f}%. "
-        "Predictive migration (P4) is not significantly different from protection under "
-        "collapse and non-terrestrial degradation, is worse under handover dynamics and "
+        + f"the learned predictor (TOST, family B3), and in exploratory comparisons perfect state "
+        f"adds at most {hrmax:.1f}%. Predictive migration (P4) is not significantly different "
+        "from protection under collapse and non-terrestrial degradation after multiplicity "
+        "correction (under collapse the point estimate favours migration), is worse under handover dynamics and "
         "common-cause disruption, and its gain under common-cause disruption is almost "
         "entirely a bypass of the detection delay; the rest of its gain exists where "
         "degradation is gradual and is sensitive to the switch-over cost, the topology and the "
@@ -234,7 +235,8 @@ def build_texts():
         "test PR-AUC, which we should not have done.")
     R["R4.4"] = ("Distinguish the exploratory nature of S7.",
         "Done. S7 is described as an externally parameterised stress test, not an external "
-        "validation, in Sections 6.2 and 7.8; it is outside every inferential family and all "
+        "validation, in Sections 6.2 and 7.8, and Section 6.2 uses your wording 'exploratory, "
+        "externally anchored scenario'; it is outside every inferential family and all "
         "its comparisons are labelled exploratory. The revised abstract and conclusions do not "
         "use S7 as validation.")
 
@@ -279,7 +281,11 @@ def build_texts():
         "(Limitation 2).")
     R["R1.4"] = ("Additional baselines, e.g. protection mechanisms.",
         "Added: P1b, 1:1 protection with a pre-computed node-disjoint standby path and "
-        "detection-driven, capacity-checked switch-over at cost C_m [57], [58], [79]. This "
+        "detection-driven, capacity-checked switch-over at cost C_m [57], [58], [79]. Section "
+        "2.4 now also discusses protection and failure handling for LEO constellations "
+        "specifically — local detour routing around failed inter-satellite links [82] and the "
+        "recovery schemes surveyed in [81] — and Section 6.3 states that P1b represents this "
+        "class in its simplest, risk-free form. This "
         "baseline changed the conclusions. On the 64 confirmation seeds it reduces the loss "
         f"relative to P1 by {min(prot):.1f}–{max(prot):.1f}% in S3–S6, and predictive migration "
         f"is not significantly different from it under collapse after Holm correction (P4 − P1b: {cfs(S4, 'proactive_ai', 'protection')}) "
@@ -318,7 +324,8 @@ def build_texts():
     R["R1.6"] = ("Budget factors and weights 4, 3, 0.6: why these values? Sensitivity analysis.",
         "Section 4.4 explains the normalisation argument used to fix them before the campaign, "
         f"and Section 7.10 ({ref('controller design choices')}) now reports a design "
-        "sensitivity on 24 paired seeds: four budget-factor profiles (flat, shallow, nominal, "
+        "sensitivity on 24 paired seeds, with the P1b reference and the paired P6 − P1b "
+        "interval for every setting: four budget-factor profiles (flat, shallow, nominal, "
         "steep) and one-at-a-time changes of the loss coefficient (2, 8), risk base (1.5, 6) "
         f"and criticality slope (0, 1.2). P4 ranges {ds['P4 loss'].min():.2f}–"
         f"{ds['P4 loss'].max():.2f} and P6 {ds['P6 loss'].min():.2f}–{ds['P6 loss'].max():.2f}; "
@@ -336,6 +343,9 @@ def build_texts():
         "impairment in S7 is a short, scheduled reconfiguration without precursor; element "
         "failures are few, and although P4 anticipates about half of them it performs many "
         "more migrations than the calibrated perfect-state policy, most of which do not pay. "
+        "Its failure-induced recovery in S7 is "
+        f"{REF.loc[S7, 'proactive_ai']:.2f} slots against {REF.loc[S7, 'reactive']:.2f} for P1, "
+        "so the all-interruption advantage is again a composition effect (Section 7.8). "
         "Protection and "
         f"P6 still improve on P1 in S7 ({rel(S7, 'protection'):+.1f}% and "
         f"{rel(S7, 'protection_predictive'):+.1f}%). We agree that the result limits the "
@@ -355,7 +365,8 @@ def build_texts():
         "budgets, the criticality term and criticality-ordered processing; uniform variants P3u "
         "and P4u remove all three. Direct paired P3–P4 contrasts are in "
         f"{ref('Exploratory paired contrasts')} for every scenario and the 2 × 2 analysis is in "
-        "Section 7.7. The comparison confirms your concern: under collapse prediction is ahead "
+        "Section 7.7; the uniform-variant contrasts (P4u − P3u, P3 − P3u, P4 − P4u) are also "
+        "rows of that table. The comparison confirms your concern: under collapse prediction is ahead "
         f"of the index with differentiation ({d43[0]:+.2f} [{d43[1]:.2f}, {d43[2]:.2f}]) but "
         f"behind it with uniform treatment ({d43u[0]:+.2f} [{d43u[1]:.2f}, {d43u[2]:.2f}]), "
         "because differentiated budgets hurt the index-driven policy there. Under handover "
@@ -425,7 +436,8 @@ def build_texts():
     R["R3.4"] = ("Specify P2 fully; compare P2 and P4 at matched alarm or migration rate.",
         "P2 is now fully specified (Section 6.3): the KPI severity rule, the nominal operator "
         "limits, the same hysteresis and k = 3 candidates as P4, and exclusion of alarmed "
-        "elements from routing. We added P2m with the alarm scale matched on validation runs "
+        "elements from routing; the loss limit equals the loosest class loss budget of Table 2 "
+        "and the other limits are conventional operator thresholds fixed before the study. We added P2m with the alarm scale matched on validation runs "
         f"to the predictor's per-element alarm rate (scale {kpi['kpi_scale_at_operating_point']:.3f}), "
         "and a frontier sweeping the operating point of every risk source "
         f"({ref('number of proactive migrations per run')}). Your suspicion was correct: "
@@ -438,8 +450,11 @@ def build_texts():
         "It was not documented, and we re-did it under an explicit protocol (Section 6.3): the "
         "index quantile and the KPI scale are estimated on dedicated validation runs of P1 in "
         "S2–S4 on six seeds (9000 + 13k, k = 0…5) disjoint from every evaluation seed, at the "
-        f"predictor's per-element alarm rate ({deg['alarm_rate']:.4f}), and frozen before any "
-        "evaluation run. The source of each scale is recorded in the result files.")
+        f"predictor's closed-loop per-element alarm rate on those runs ({100 * deg['alarm_rate']:.2f}% "
+        f"of {deg['n_element_slots']:,} element-slots), and frozen before any evaluation run. "
+        "Section 6.3 now states these values and explains why this closed-loop alarm rate "
+        "differs from the offline rates in the predictor tables. The source of each scale is "
+        "recorded in the result files.")
     R["R3.6"] = ("P5 mapping undefined; perfect state with a mis-calibrated map is not an oracle.",
         "Agreed. The original map is now defined (linear in health between 0.35 and 0.18) and "
         "retained as P5 to show its consequence. We added P5c, the calibrated perfect-state "
@@ -574,8 +589,9 @@ def write_cover(out_dir):
         "scored with the switch-over instead of the restoration cost — and a second pass "
         "found three further issues of smaller effect. All are corrected and covered by unit "
         "tests. With the corrections and the baselines the reviewers requested, above all "
-        "1:1 protection, the original headline does not hold, and we have rewritten the paper "
-        "around what the corrected evidence supports.",
+        "1:1 protection, the corrected results materially changed the quantitative "
+        "interpretation, and we therefore revised the paper around the evidence supported by "
+        "the corrected implementation.",
         "Because the protection-based policies were introduced during the revision, we froze "
         "the code and wrote a confirmation protocol with fixed hypotheses, multiplicity "
         "corrections and equivalence margins before running 64 previously unused seeds. In the "
@@ -587,8 +603,8 @@ def write_cover(out_dir):
         + ("statistically equivalent to" if eq_all else "performing like")
         + " the learned predictor in that role; and pre-emptive migration on predicted risk "
         "is competitive with protection only where degradation is gradual, while under "
-        "common-cause disruption its gain is almost entirely a bypass of the detection delay. We believe this controlled, "
-        "pre-registered decomposition is a more useful and more reliable contribution for RESS "
+        "common-cause disruption its gain is almost entirely a bypass of the detection delay. We believe this controlled "
+        "decomposition, with a confirmation protocol committed before any confirmation run, is a more useful and more reliable contribution for RESS "
         "readers, and the response letter documents every change point by point.",
         "The revised manuscript has not been submitted elsewhere. The updated code, the frozen "
         "protocol and the result files are provided as supplementary material and will be "
