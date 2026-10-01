@@ -18,6 +18,7 @@ import os
 import sys
 from typing import Dict, List
 
+import numpy as np
 import pandas as pd
 
 from ..orchestrator import digital_twin as dt
@@ -88,6 +89,14 @@ def tasks(exp: str) -> List[tuple]:
         return [(name, 7000 + 61 * k) for name in PARAMS for k in range(12)]
     if exp == "controller_weight_sensitivity":
         return [(name, 7000 + 61 * k) for name in WEIGHTS for k in range(12)]
+    if exp == "accounting_check":
+        return [(f, sc, 1000 + 37 * k) for f in (True, False)
+                for sc in ("S3_leo_degradation", "S4_disaster_collapse", "S6_common_cause")
+                for k in range(12)]
+    if exp == "endogeneity_check":
+        return [(c, sc, 6000 + 29 * k) for c in ("nominal", "strong")
+                for sc in ("S2_bs_overload", "S4_disaster_collapse", "S6_common_cause")
+                for k in range(12)]
     if exp == "protection_modes":
         return [(m, s, 1000 + 37 * k) for m in ("feasible", "reserved", "optimistic")
                 for s in ("S4_disaster_collapse", "S6_common_cause") for k in range(24)]
@@ -218,6 +227,32 @@ def execute(exp: str, task: tuple) -> List[dict]:
                 rows.append(_pack(_run("S4_disaster_collapse", pol, seed).run(), setting=name))
         finally:
             setattr(dt, key, base)
+    elif exp == "accounting_check":
+        flag, scen, seed = task
+        base = RR.DEAD_PATH_MIGRATION_COST
+        RR.DEAD_PATH_MIGRATION_COST = flag
+        try:
+            pols = ("reactive", "protection") if flag else ()
+            pols += ("degradation_aware", "proactive_ai", "proactive_threshold_matched",
+                     "oracle_calibrated")
+            for pol in pols:
+                rows.append(_pack(_run(scen, pol, seed).run(), flag=flag))
+        finally:
+            RR.DEAD_PATH_MIGRATION_COST = base
+    elif exp == "endogeneity_check":
+        coupling, scen, seed = task
+        gain, knee = COUPLINGS[coupling]
+        fg.LOAD_HAZARD_KNEE = knee
+        try:
+            for pol in ("static", "reactive", "proactive_ai", "protection_predictive"):
+                r = _run(scen, pol, seed, feedback_gain_scale=gain)
+                summ = r.run()
+                util = np.array([v for m in r.load_trace for v in m.values()])
+                row = _pack(summ, coupling=coupling)
+                row["util_above_knee"] = float((util > knee).mean())
+                rows.append(row)
+        finally:
+            fg.LOAD_HAZARD_KNEE = COUPLINGS["nominal"][1]
     elif exp == "protection_modes":
         mode, scen, seed = task
         for pol in ("reactive", "protection", "protection_index", "protection_predictive"):
