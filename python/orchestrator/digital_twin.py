@@ -56,6 +56,9 @@ class DigitalTwin:
             for nid, data in graph.nodes(data=True)
         }
         self.link_load: Dict[Tuple[str, str], float] = {}
+        # Bandwidth reserved for standby paths (reserved 1:1 protection only).
+        self.link_reserved: Dict[Tuple[str, str], float] = {}
+        self.node_reserved: Dict[str, float] = {}
         self.t = 0
         self._graph_cache: Dict[Tuple, nx.Graph] = {}
         self._path_cache: Dict[Tuple, Optional[List[str]]] = {}
@@ -99,6 +102,23 @@ class DigitalTwin:
         for node in self.nodes.values():
             node.load_mbps = 0.0
         self.link_load = {}
+        self.link_reserved = {}
+        self.node_reserved = {}
+
+    def reserve(self, path: Sequence[str], demand: float) -> None:
+        for nid in path:
+            self.node_reserved[nid] = self.node_reserved.get(nid, 0.0) + demand
+        for u, v in zip(path[:-1], path[1:]):
+            key = (u, v) if u <= v else (v, u)
+            self.link_reserved[key] = self.link_reserved.get(key, 0.0) + demand
+
+    def move_flow_load(self, old: Sequence[str], new: Sequence[str], demand: float) -> None:
+        """Keep the capacity ledger exact within a slot when a flow changes path."""
+        if old:
+            self.add_flow_load(old, -demand)
+        if new:
+            self.add_flow_load(new, demand)
+        self.invalidate()
 
     def add_flow_load(self, path: Sequence[str], demand: float) -> None:
         for nid in path:
@@ -143,7 +163,8 @@ class DigitalTwin:
             if u not in g or v not in g:
                 continue
             key = (u, v) if u <= v else (v, u)
-            residual = data["capacity_mbps"] - self.link_load.get(key, 0.0)
+            residual = (data["capacity_mbps"] - self.link_load.get(key, 0.0)
+                        - self.link_reserved.get(key, 0.0))
             if demand > 0.0 and residual < demand:
                 continue
             weight = (
@@ -217,14 +238,16 @@ class DigitalTwin:
             keep *= 1.0 - min(1.0, self.nodes[nid].telemetry.get("packet_loss", 0.0))
         return latency, 1.0 - keep
 
-    def residual_capacity(self, path: Sequence[str]) -> float:
+    def residual_capacity(self, path: Sequence[str], include_reserved: bool = True) -> float:
         margins = []
         for u, v in zip(path[:-1], path[1:]):
             key = (u, v) if u <= v else (v, u)
-            margins.append(self.graph[u][v]["capacity_mbps"] - self.link_load.get(key, 0.0))
+            margins.append(self.graph[u][v]["capacity_mbps"] - self.link_load.get(key, 0.0)
+                           - (self.link_reserved.get(key, 0.0) if include_reserved else 0.0))
         for nid in path:
             node = self.nodes[nid]
-            margins.append(node.capacity_mbps - node.load_mbps)
+            margins.append(node.capacity_mbps - node.load_mbps
+                           - (self.node_reserved.get(nid, 0.0) if include_reserved else 0.0))
         return min(margins) if margins else 0.0
 
     def state_vector(self) -> Dict[str, Dict[str, float]]:

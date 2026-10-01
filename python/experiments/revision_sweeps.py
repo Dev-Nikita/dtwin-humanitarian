@@ -40,7 +40,8 @@ KEYS = ("service_availability", "resilience_loss", "normalised_resilience", "sla
         "mig_trigger_already_failed", "mig_trigger_fails_within_H",
         "mig_trigger_no_failure_within_H", "node_failure_slots", "anticipation_rate",
         "lead_time_median", "lead_time_mean", "generated_flows", "success_command_control",
-        "success_medical_telemetry", "avail_command_control")
+        "success_medical_telemetry", "avail_command_control", "mig_trigger_degraded_no_failure",
+        "mig_trigger_false_alarm", "path_computations", "switch_infeasible", "protection_mode")
 
 
 def _run(scen, policy, seed, **kw):
@@ -87,6 +88,12 @@ def tasks(exp: str) -> List[tuple]:
         return [(name, 7000 + 61 * k) for name in PARAMS for k in range(12)]
     if exp == "controller_weight_sensitivity":
         return [(name, 7000 + 61 * k) for name in WEIGHTS for k in range(12)]
+    if exp == "protection_modes":
+        return [(m, s, 1000 + 37 * k) for m in ("feasible", "reserved", "optimistic")
+                for s in ("S4_disaster_collapse", "S6_common_cause") for k in range(24)]
+    if exp == "confirmation":
+        return [(s, CONFIRM_SEED0 + CONFIRM_STEP * k) for s in CONFIRM_SCENARIOS
+                for k in range(CONFIRM_N)]
     if exp == "detection_delay":
         return [(d, s, 1000 + 37 * k) for d in (0, 1, 3, 5)
                 for s in ("S4_disaster_collapse", "S6_common_cause") for k in range(12)]
@@ -117,6 +124,13 @@ WEIGHTS = {
     "W_LOAD x0.5": ("W_LOAD", 0.5), "W_LOAD x2.0": ("W_LOAD", 2.0),
 }
 COUPLINGS = {"nominal": (1.0, 0.65), "strong": (4.0, 0.40)}
+# Frozen confirmation experiment (R1_CONFIRMATION_PROTOCOL.md). These seeds were
+# never used for development or analysis before the protocol was committed.
+CONFIRM_SEED0, CONFIRM_STEP, CONFIRM_N = 20000, 101, 64
+CONFIRM_SCENARIOS = ("S3_leo_degradation", "S4_disaster_collapse", "S5_leo_handover",
+                     "S6_common_cause")
+CONFIRM_POLICIES = ("reactive", "protection", "degradation_aware", "proactive_ai",
+                    "protection_index", "protection_predictive", "protection_oracle")
 FRONTIER_KAPPA = (0.75, 1.0, 1.5, 2.0, 3.0)
 FRONTIER_KPI = (1.1, 1.245, 1.5, 2.0, 3.0)
 
@@ -204,6 +218,15 @@ def execute(exp: str, task: tuple) -> List[dict]:
                 rows.append(_pack(_run("S4_disaster_collapse", pol, seed).run(), setting=name))
         finally:
             setattr(dt, key, base)
+    elif exp == "protection_modes":
+        mode, scen, seed = task
+        for pol in ("reactive", "protection", "protection_index", "protection_predictive"):
+            rows.append(_pack(_run(scen, pol, seed, protection_mode=mode).run(),
+                              protection_mode_setting=mode))
+    elif exp == "confirmation":
+        scen, seed = task
+        for pol in CONFIRM_POLICIES:
+            rows.append(_pack(_run(scen, pol, seed).run()))
     elif exp == "detection_delay":
         d, scen, seed = task
         base = RR.DETECTION_DELAY

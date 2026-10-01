@@ -171,3 +171,44 @@ def test_lead_time_is_bounded_by_horizon():
         assert s["anticipated_failures"] + s["missed_failures"] == 1
         if s["anticipated_failures"]:
             assert 0 < s["lead_time_mean"] <= H
+
+
+def test_keyed_durations_do_not_depend_on_call_order():
+    """C_r / C_m are functions of (seed, event key), not of the RNG call order."""
+    from python.experiments.runner import ExperimentRun
+
+    a = ExperimentRun("S4_disaster_collapse", "reactive", 11, steps=10)
+    b = ExperimentRun("S4_disaster_collapse", "protection_predictive", 11, steps=10)
+    keys = [(1, 5, 3, 40), (2, 7, 120), (3, 9, 1, 77)]
+    da = [a._draw(4, 12, *k) for k in keys]
+    b.rng.random(1000)                      # consume the controller stream
+    db = [b._draw(4, 12, *k) for k in reversed(keys)][::-1]
+    assert da == db
+    assert all(4 <= x <= 12 for x in da)
+
+
+def test_zero_cost_switch_interrupts_no_slot():
+    """Half-open accounting: a duration of C slots interrupts exactly C slots."""
+    from python.experiments.runner import ExperimentRun
+
+    run = ExperimentRun("S1_normal", "reactive", 3, steps=30)
+    run.run()
+    flow = run.all_flows[0]
+    step = 20
+    flow.reconfig_until = step + 0 - 1
+    assert not (step <= flow.reconfig_until)
+    flow.reconfig_until = step + 3 - 1
+    assert sum(step <= s <= flow.reconfig_until for s in range(step, step + 10)) == 3
+
+
+def test_feasible_protection_never_switches_onto_saturated_standby():
+    from python.experiments.runner import ExperimentRun
+    from python.orchestrator import policies as P
+
+    res = {}
+    for mode in ("feasible", "optimistic"):
+        run = ExperimentRun("S4_disaster_collapse", "protection", 1000, steps=200,
+                            protection_mode=mode)
+        res[mode] = run.run()
+    assert res["feasible"]["protection_switches"] <= res["optimistic"]["protection_switches"] + 5
+    assert res["optimistic"]["switch_infeasible"] == 0

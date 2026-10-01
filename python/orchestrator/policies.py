@@ -65,6 +65,23 @@ EXCLUDE_FACTOR: float = 2.50
 LEGACY_RESTORATION_HYSTERESIS: bool = False
 DEFAULT_THETA: float = 0.22
 
+# Protection model (revision R1b). "feasible": the standby path is pre-signalled
+# but its capacity is not reserved, and a switch-over is admitted only if the
+# standby path has enough residual capacity at the moment of the switch (flows
+# affected in the same slot are served in a fixed order and see each other's
+# load); otherwise the flow falls back to reactive restoration. "reserved": the
+# standby bandwidth is reserved in advance, so it is unavailable to other flows
+# and the switch-over is always feasible. "optimistic": no capacity check at the
+# switch-over (the first-revision model, kept as an upper bound).
+PROTECTION_MODE: str = "feasible"
+PROTECTION_MODES = ("feasible", "reserved", "optimistic")
+# Standby refresh discipline of predictive protection: at most one refresh per
+# flow per REFRESH_COOLDOWN slots, and a replacement is adopted only if it is
+# observed up, capacity-feasible and lowers the bottleneck risk of the standby
+# path by at least REFRESH_MIN_GAIN (or the current standby path is down).
+REFRESH_COOLDOWN: int = 6
+REFRESH_MIN_GAIN: float = 0.05
+
 # Coefficients of the candidate-selection objective, Eq. (11):
 # J = D/Dmax + LOSS * p/pmax + (RISK0 + RISK1 * chi_c) * R_prod + Pen
 SCORE_COEF: Dict[str, float] = {"loss": 4.0, "risk0": 3.0, "risk1": 0.6}
@@ -167,6 +184,8 @@ class Orchestrator:
         budget_factors: Optional[Dict[int, float]] = None,
         score_coef: Optional[Dict[str, float]] = None,
         kpi_scale: float = 1.0,
+        protection_mode: Optional[str] = None,
+        duration_fn=None,
     ) -> None:
         if policy not in POLICY_SPECS:
             raise ValueError(f"unknown policy {policy}")
@@ -190,7 +209,13 @@ class Orchestrator:
         self.trigger_log: List[Dict[str, float]] = []
         self.decisions: List[Decision] = []
         self.backup: Dict[int, List[str]] = {}
+        self.protection_mode = protection_mode or PROTECTION_MODE
+        assert self.protection_mode in PROTECTION_MODES
+        self.duration_fn = duration_fn
+        self.last_refresh: Dict[int, int] = {}
         self.counters: Dict[str, int] = {
+            "path_computations": 0,
+            "switch_infeasible": 0,
             "admitted": 0,
             "rejected": 0,
             "reactive_reroute": 0,
@@ -294,27 +319,70 @@ class Orchestrator:
                 best, best_score = path, score
         return best
 
-    def _compute_backup(self, flow: Flow) -> None:
-        """Node-disjoint backup for 1:1 protection (capacity is not reserved).
-        Predictive protection also keeps the backup off elements whose risk
-        exceeds the class budget and uses the risk-augmented path cost."""
-        if self.spec.restoration != "protection" or not flow.path:
-            return
+    def _candidate_backup(self, flow: Flow) -> Optional[List[str]]:
+        """Node-disjoint standby path. Predictive protection keeps it off elements
+        whose risk exceeds the class budget and uses the risk-augmented cost; under
+        the feasible and reserved models a capacity-feasible path is preferred."""
+        self.counters["path_computations"] += 1
         inner = set(flow.path[1:-1])
         if self.spec.backup_refresh:
             risky = {n for n, st in self.twin.nodes.items()
                      if st.risk > self.budget[flow.priority]}
             inner |= (risky - {flow.source, flow.destination})
-        path = self.twin.shortest_path(flow.source, flow.destination,
-                                       self.spec.backup_refresh and self.risk_aware,
-                                       frozenset(inner), 0.0)
+        risk_aware = self.spec.backup_refresh and self.risk_aware
+        demand = flow.demand_mbps if self.protection_mode != "optimistic" else 0.0
+        path = self.twin.shortest_path(flow.source, flow.destination, risk_aware,
+                                       frozenset(inner), demand)
+        if path is None and demand > 0.0:
+            path = self.twin.shortest_path(flow.source, flow.destination, risk_aware,
+                                           frozenset(inner), 0.0)
         if path is None and self.spec.backup_refresh:
             path = self.twin.shortest_path(flow.source, flow.destination, False,
                                            frozenset(flow.path[1:-1]), 0.0)
         if path and path != flow.path:
+            return path
+        return None
+
+    def _compute_backup(self, flow: Flow) -> None:
+        if self.spec.restoration != "protection" or not flow.path:
+            return
+        path = self._candidate_backup(flow)
+        if path:
             self.backup[flow.flow_id] = path
         else:
             self.backup.pop(flow.flow_id, None)
+
+    def _maybe_refresh_backup(self, flow: Flow, step: int) -> None:
+        if step - self.last_refresh.get(flow.flow_id, -10_000) < REFRESH_COOLDOWN:
+            return
+        bk = self.backup.get(flow.flow_id)
+        bk_down = bk is None or self.path_broken(bk)
+        bk_risk = 1.0 if bk is None else self.twin.path_risk_max(bk)
+        if not bk_down and bk_risk <= self.budget[flow.priority]:
+            return
+        new = self._candidate_backup(flow)
+        self.last_refresh[flow.flow_id] = step
+        if new is None or new == bk or self.path_broken(new):
+            return
+        if not bk_down and self.twin.path_risk_max(new) > bk_risk - REFRESH_MIN_GAIN:
+            return
+        if (self.protection_mode != "optimistic"
+                and self.twin.residual_capacity(new) < flow.demand_mbps and not bk_down):
+            return
+        self.backup[flow.flow_id] = new
+        self.counters["backup_refresh"] += 1
+
+    def _duration(self, kind: str, flow: Flow, step: int, old_path) -> tuple:
+        """Interruption length in slots and its cause label. The assessment layer
+        supplies a keyed draw (common random numbers per physical event); without
+        it the controller stream is used."""
+        if self.duration_fn is not None:
+            return self.duration_fn(kind, flow, step, old_path)
+        if kind in ("proactive_reroute", "protection_switch"):
+            d = int(self.rng.integers(*self.migration_cost, endpoint=True))
+        else:
+            d = int(self.rng.integers(*REACTIVE_RECONFIG_STEPS, endpoint=True))
+        return d, ("migration" if kind == "proactive_reroute" else "restoration")
 
     # ----------------------------------------------------------------- admit
     def admit(self, flow: Flow, step: int) -> bool:
@@ -326,6 +394,7 @@ class Orchestrator:
         flow.path = path
         flow.last_reroute_step = step
         self.counters["admitted"] += 1
+        self.twin.move_flow_load([], path, flow.demand_mbps)
         self._compute_backup(flow)
         self.decisions.append(
             Decision(flow.flow_id, step, "admit", path, self.twin.path_risk(path), self.policy)
@@ -341,15 +410,9 @@ class Orchestrator:
         if self.spec.restoration == "none":
             return None
         broken = self.path_broken(flow.path)
-        # Standby-path refresh interrupts no traffic, so it is not rate-limited.
+        # Standby-path refresh interrupts no traffic; it has its own cooldown.
         if not broken and self.spec.backup_refresh:
-            bk = self.backup.get(flow.flow_id)
-            if (bk is None or self.path_broken(bk)
-                    or self.twin.path_risk_max(bk) > self.budget[flow.priority]):
-                before = bk
-                self._compute_backup(flow)
-                if self.backup.get(flow.flow_id) != before:
-                    self.counters["backup_refresh"] += 1
+            self._maybe_refresh_backup(flow, step)
         # Hysteresis bounds proactive churn only; it never delays the restoration
         # of a flow whose path has been observed to be down.
         if ((not broken or LEGACY_RESTORATION_HYSTERESIS)
@@ -377,7 +440,12 @@ class Orchestrator:
         if broken and self.spec.restoration == "protection":
             backup = self.backup.get(flow.flow_id)
             if backup and not self.path_broken(backup):
-                new_path, kind = backup, "protection_switch"
+                feasible = (self.protection_mode != "feasible"
+                            or self.twin.residual_capacity(backup) >= flow.demand_mbps)
+                if feasible:
+                    new_path, kind = backup, "protection_switch"
+                else:
+                    self.counters["switch_infeasible"] += 1
         if new_path is None:
             new_path = self._select_path(flow)
         if new_path is None or new_path == flow.path:
@@ -385,21 +453,22 @@ class Orchestrator:
                 self.counters["reroute_failed"] += 1
             return None
 
+        old_path = list(flow.path)
         flow.path = new_path
         flow.last_reroute_step = step
         flow.reroutes += 1
-        if kind in ("proactive_reroute", "protection_switch"):
-            delay = int(self.rng.integers(*self.migration_cost, endpoint=True))
-            if kind == "proactive_reroute":
-                flow.proactive_reroutes += 1
-                self.trigger_log.append(
-                    {"step": step, "flow": flow.flow_id, "priority": flow.priority,
-                     "risk": self.twin.path_risk_max(flow.path)}
-                )
-        else:
-            delay = int(self.rng.integers(*REACTIVE_RECONFIG_STEPS, endpoint=True))
-        flow.reconfig_until = step + delay
-        flow.reconfig_kind = "migration" if kind == "proactive_reroute" else "restoration"
+        self.twin.move_flow_load(old_path, new_path, flow.demand_mbps)
+        if kind == "proactive_reroute":
+            flow.proactive_reroutes += 1
+            self.trigger_log.append(
+                {"step": step, "flow": flow.flow_id, "priority": flow.priority,
+                 "risk": self.twin.path_risk_max(flow.path)}
+            )
+        delay, label = self._duration(kind, flow, step, old_path)
+        # Half-open accounting: an action in slot t with duration C interrupts
+        # the flow in slots t, ..., t + C - 1, i.e. exactly C slots (C = 0: none).
+        flow.reconfig_until = step + delay - 1
+        flow.reconfig_kind = label
         self._compute_backup(flow)
         self.counters[kind] += 1
         self.decisions.append(

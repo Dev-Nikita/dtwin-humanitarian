@@ -29,8 +29,8 @@ from ..orchestrator.digital_twin import DigitalTwin
 from ..orchestrator.policies import POLICY_SPECS, Orchestrator
 from ..predictor.online_features import OnlineFeatureBuilder
 from ..simulator.config import (DETECTION_DELAY, EPISODE_STEPS, PREDICTION_HORIZON,
-                                REACTIVE_RECONFIG_STEPS, SCENARIOS)
-from ..simulator.failure_generator import STATUS_FAILED, NetworkEnvironment
+                                PROACTIVE_RECONFIG_STEPS, REACTIVE_RECONFIG_STEPS, SCENARIOS)
+from ..simulator.failure_generator import STATUS_DEGRADED, STATUS_FAILED, NetworkEnvironment
 from ..simulator.network_topology import NODE_CATALOGUE, SINKS, TERMINALS, build_topology
 from ..simulator.traffic_generator import Flow, TrafficGenerator
 from .oracle_table import oracle_risk
@@ -71,6 +71,7 @@ class ExperimentRun:
         kpi_scale: Optional[float] = None,
         family: str = "jump_diffusion",
         obs_family: str = "nominal",
+        protection_mode: Optional[str] = None,
     ) -> None:
         self.scenario = scenario
         self.spec = POLICY_SPECS[policy]
@@ -130,7 +131,9 @@ class ExperimentRun:
             policy, self.twin, rng=self.rng, theta=theta, budget_scale=budget_scale,
             migration_cost=migration_cost, budget_factors=budget_factors,
             score_coef=score_coef, kpi_scale=kpi_scale,
+            protection_mode=protection_mode, duration_fn=self._keyed_duration,
         )
+        self.migration_cost = tuple(migration_cost or PROACTIVE_RECONFIG_STEPS)
         self._deg_scale = max(1e-3, _load_scale(
             "degradation_index_scale.json", "index_at_operating_point", 0.10))
         self.lead_tracker = LeadTimeTracker(theta=theta, horizon=self.horizon)
@@ -151,6 +154,7 @@ class ExperimentRun:
                            if nid in self.graph}
         self.timeline: List[Dict[str, float]] = []
         self.dead_path_migrations = 0
+        self._node_index = {nid: i for i, nid in enumerate(sorted(self.env.nodes))}
         self.trigger_truth = {"already_failed": 0, "fails_within_H": 0, "no_failure_within_H": 0}
         self._pending: List = []
         self._fail_onsets: Dict[str, List[int]] = {}
@@ -211,6 +215,46 @@ class ExperimentRun:
         prob = self.model.predict_proba(frame)[:, 1]
         prob = np.clip(prob * self.risk_scale, 0.0, 1.0)
         return {nid: float(p) for nid, p in zip(ids, prob)}
+
+    # ------------------------------------------------------- keyed durations
+    def _failure_key(self, path) -> Optional[tuple]:
+        """Identify the physical failure event behind an interruption: the failed
+        element of the vacated path with the smallest index and its onset slot."""
+        failed = [n for n in path if self.env.nodes[n].status == STATUS_FAILED]
+        if not failed:
+            return None
+        nid = min(failed, key=lambda n: self._node_index[n])
+        onset = self._fail_onsets.get(nid, [0])[-1]
+        return (self._node_index[nid], int(onset))
+
+    def _draw(self, lo: int, hi: int, *key: int) -> int:
+        """Uniform integer on {lo, ..., hi} determined only by (seed, key): common
+        random numbers for action durations, independent of call order."""
+        ss = np.random.SeedSequence([int(self.seed), 0xC057] + [int(k) for k in key])
+        return int(np.random.default_rng(ss).integers(lo, hi, endpoint=True))
+
+    def _keyed_duration(self, kind: str, flow, step: int, old_path) -> tuple:
+        """Interruption length of an action (slots) and its cause.
+
+        Restoration time C_r is keyed by (flow, physical failure event), so every
+        policy that restores the same flow after the same failure draws the same
+        C_r. A protection switch-over draws C_m keyed the same way. A live
+        make-before-break migration draws C_m keyed by (flow, slot). A migration
+        away from a path that is already physically down cannot be
+        make-before-break and is charged the keyed C_r of that failure event."""
+        fk = self._failure_key(old_path) if old_path else None
+        lo_r, hi_r = REACTIVE_RECONFIG_STEPS
+        lo_m, hi_m = self.migration_cost
+        if kind == "proactive_reroute":
+            if fk is not None and DEAD_PATH_MIGRATION_COST:
+                self.dead_path_migrations += 1
+                return self._draw(lo_r, hi_r, 1, flow.flow_id, *fk), "restoration"
+            return self._draw(lo_m, hi_m, 2, flow.flow_id, step), "migration"
+        if kind == "protection_switch":
+            key = fk if fk is not None else (-1, step)
+            return self._draw(lo_m, hi_m, 3, flow.flow_id, *key), "restoration"
+        key = fk if fk is not None else (-1, step)
+        return self._draw(lo_r, hi_r, 1, flow.flow_id, *key), "restoration"
 
     # ------------------------------------------------------------- evaluation
     def _evaluate(self, snapshot: Dict[str, Dict[str, float]], step: int) -> Dict[str, float]:
@@ -288,6 +332,11 @@ class ExperimentRun:
             for flow in self.active:
                 if flow.path:
                     self.twin.add_flow_load(flow.path, flow.demand_mbps)
+            if self.orch.protection_mode == "reserved" and self.spec.restoration == "protection":
+                for flow in self.active:
+                    bk = self.orch.backup.get(flow.flow_id)
+                    if bk:
+                        self.twin.reserve(bk, flow.demand_mbps)
             load_map = self.twin.load_map()
             self.load_trace.append(load_map)
 
@@ -333,27 +382,17 @@ class ExperimentRun:
                 else:
                     self.collector.record_drop(flow)
 
-            # 6. re-routing pass; differentiated policies process flows in
-            #    decreasing criticality so that scarce residual capacity goes to
-            #    the most consequential services first (stable sort).
-            order = (sorted(self.active, key=lambda f: -f.priority)
-                     if self.orch.differentiated else self.active)
+            # 6. re-routing pass. Flows are processed in a fixed order —
+            #    decreasing criticality, then flow identifier, for differentiated
+            #    policies; flow identifier for uniform ones — so that flows hit by
+            #    the same failure claim residual (standby) capacity in a
+            #    reproducible order and see each other's load.
+            if self.orch.differentiated:
+                order = sorted(self.active, key=lambda f: (-f.priority, f.flow_id))
+            else:
+                order = sorted(self.active, key=lambda f: f.flow_id)
             for flow in order:
-                old_path = list(flow.path) if flow.path else []
                 kind = self.orch.maybe_reroute(flow, step)
-                if (kind == "proactive_reroute" and DEAD_PATH_MIGRATION_COST
-                        and any(self.env.nodes[n].status == STATUS_FAILED for n in old_path)):
-                    # Physical accounting (revision): a "migration" away from a path
-                    # that is already physically down cannot be make-before-break,
-                    # because there is no working path to keep the service on while
-                    # the new one is established. The interruption is therefore the
-                    # restoration delay C_r, not the migration cost C_m. The
-                    # controller itself cannot see the physical state; only the
-                    # assessment of the interruption depends on it.
-                    delay = int(self.acct_rng.integers(*REACTIVE_RECONFIG_STEPS, endpoint=True))
-                    flow.reconfig_until = step + delay
-                    flow.reconfig_kind = "restoration"
-                    self.dead_path_migrations += 1
                 if kind == "proactive_reroute" and self.orch.last_trigger_node:
                     # Ground-truth classification of what the migration reacted to
                     # (assessment layer only; never visible to the controller).
@@ -361,7 +400,8 @@ class ExperimentRun:
                     if node.status == STATUS_FAILED:
                         self.trigger_truth["already_failed"] += 1
                     else:
-                        self._pending.append((self.orch.last_trigger_node, step))
+                        self._pending.append((self.orch.last_trigger_node, step,
+                                              node.status == STATUS_DEGRADED))
 
             # 7. evaluation on the true physical state
             self.timeline.append(self._evaluate(snapshot, step))
@@ -421,13 +461,24 @@ class ExperimentRun:
         summary.update(self.lead_tracker.summary())
         # retrospective resolution of migrations triggered on non-failed elements
         H = self.horizon
-        within = sum(1 for nid, t in self._pending
-                     if any(t < u <= t + H for u in self._fail_onsets.get(nid, [])))
+        within, degraded, false_alarm = 0, 0, 0
+        for nid, t, was_degraded in self._pending:
+            if any(t < u <= t + H for u in self._fail_onsets.get(nid, [])):
+                within += 1
+            elif was_degraded:
+                degraded += 1
+            else:
+                false_alarm += 1
         summary.update({
             "mig_trigger_already_failed": self.trigger_truth["already_failed"],
             "dead_path_migrations": self.dead_path_migrations,
             "mig_trigger_fails_within_H": within,
-            "mig_trigger_no_failure_within_H": len(self._pending) - within,
+            "mig_trigger_degraded_no_failure": degraded,
+            "mig_trigger_false_alarm": false_alarm,
+            "mig_trigger_no_failure_within_H": degraded + false_alarm,
+            "path_computations": self.orch.counters["path_computations"],
+            "switch_infeasible": self.orch.counters["switch_infeasible"],
+            "protection_mode": self.orch.protection_mode,
         })
         rf = [d for f in self.all_flows for d in f.recovery_failure]
         rm = [d for f in self.all_flows for d in f.recovery_migration]
