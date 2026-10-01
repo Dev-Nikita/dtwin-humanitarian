@@ -202,7 +202,9 @@ def build_texts():
         "sweep, actuation-effort frontier, migration-cost sweep, misspecified degradation "
         "world, 98-element topology, fixed-traffic feedback ablation, standby-capacity models, "
         "accounting check, controller design sensitivity, parameter, weight and topology "
-        "sensitivity, horizon sweep). Results are organised by mechanism. The inferential "
+        "sensitivity, horizon sweep, and an exploratory decomposition of predictive protection "
+        "run after the confirmation, which attributes its effect almost entirely to the "
+        "risk-aware standby path). Results are organised by mechanism. The inferential "
         "family of the original study (P4 against P1, twenty tests) is retained as Family A "
         "for continuity; Family B is the frozen confirmation. Reviewer comments are answered "
         "point by point below; section, table and figure numbers refer to the revised "
@@ -296,7 +298,10 @@ def build_texts():
         f"and common-cause disruption ({cfs(S6, 'protection_predictive', 'protection')}). "
         f"Because protection carries much of the benefit, {ref('standby-capacity model')} checks "
         "that the result holds when standby capacity is reserved and when capacity limits are "
-        "ignored; the P6 − P1b interval excludes zero under all three capacity models.")
+        "ignored; the P6 − P1b interval excludes zero under all three capacity models. An "
+        f"exploratory ablation on the confirmation seeds ({ref('Exploratory decomposition of predictive protection')}) "
+        "shows that the effect comes almost entirely from the risk-aware choice of the "
+        "standby path, not from the choice of the primary path.")
     R["R1.5"] = ("How much of the improvement is truly contributed by failure anticipation?",
         "This is now the question the paper is built around (RQ2, Sections 7.2–7.7). The "
         "answer depends on the action. (a) In protection, very little: a contemporaneous index "
@@ -317,7 +322,7 @@ def build_texts():
         f"the index under collapse ({d43[0]:+.2f} [{d43[1]:.2f}, {d43[2]:.2f}]), but with "
         f"uniform treatment the order reverses ({d43u[0]:+.2f} [{d43u[1]:.2f}, {d43u[2]:.2f}]), "
         "and perfect state used for migration has the lowest loss of all policies under "
-        "collapse at the nominal settings; uniform index-driven migration (P3u) is also ahead "
+        "collapse in the development campaign at the nominal settings (an exploratory result); uniform index-driven migration (P3u) is also ahead "
         "of protection there. Anticipation therefore contributes through migration where "
         "degradation is gradual and the switch-over is cheap, and hardly at all through "
         "protection.")
@@ -464,7 +469,7 @@ def build_texts():
         f"against {PR.loc[(S4, 'oracle')]:.0f} for P5 and reaches a loss of "
         f"{RL.loc[S4, 'oracle_calibrated']:.2f} against {RL.loc[S4, 'oracle']:.2f} for P5, "
         f"{RL.loc[S4, 'proactive_ai']:.2f} for P4 and {RL.loc[S4, 'protection']:.2f} for P1b — "
-        "the lowest of all policies there; under common-cause disruption it stays behind "
+        "the lowest of all policies there in the development campaign at the nominal settings (exploratory); under common-cause disruption it stays behind "
         f"protection ({RL.loc[S6, 'oracle_calibrated']:.2f} against {RL.loc[S6, 'protection']:.2f}). "
         "The gap between P4 and P5c is the headroom a better forecaster could exploit in the "
         "migration role. The statement that perfect state knowledge leads to excessive "

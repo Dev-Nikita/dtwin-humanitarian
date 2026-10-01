@@ -44,6 +44,8 @@ LABEL = {
     "protection_predictive": "P6 predictive protection",
     "protection_oracle": "P6o protection + perfect state",
     "protection_predictive_mig": "P6m P6 + migration",
+    "protection_predictive_route": "P6-route risk-aware primary only",
+    "protection_predictive_standby": "P6-standby risk-aware standby only",
 }
 SHORT = {k: v.split(" ")[0] for k, v in LABEL.items()}
 # categorical slots of the validated default palette, fixed order (dataviz skill)
@@ -735,6 +737,33 @@ def r_accounting_check():
     pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_accounting.csv"), index=False)
 
 
+def r_p6_decomposition():
+    """Exploratory post-confirmation ablation of P6 on the 64 confirmation seeds."""
+    path = os.path.join(RESULTS, "p6_decomposition.csv")
+    if not os.path.exists(path):
+        print("p6_decomposition missing")
+        return
+    d = pd.read_csv(path)
+    c = pd.read_csv(os.path.join(RESULTS, "confirmation.csv"))
+    c = c[(c.policy == "protection") & c.scenario.isin(d.scenario.unique())]
+    d = pd.concat([d, c], ignore_index=True)
+    pairs = [("protection_predictive_route", "protection"),
+             ("protection_predictive_standby", "protection"),
+             ("protection_predictive", "protection"),
+             ("protection_predictive", "protection_predictive_route"),
+             ("protection_predictive", "protection_predictive_standby")]
+    rows = []
+    for s in ["S4_disaster_collapse", "S6_common_cause"]:
+        sub = d[d.scenario == s]
+        for a, b in pairs:
+            r = _paired(sub, a, b, "resilience_loss")
+            rows.append({"scenario": SCEN[s], "contrast": f"{SHORT[a]} - {SHORT[b]}",
+                         "loss of first": round(r["mean_a"], 2),
+                         "paired difference [95% CI]": f"{r['diff']:+.3f} [{r['lo']:.3f}, {r['hi']:.3f}]",
+                         "relative [%]": round(r["rel"], 2), "n": r["n"]})
+    pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_p6_decomposition.csv"), index=False)
+
+
 def main():
     MF.f03_degradation_trace()
     f04_decision_r1()
@@ -752,7 +781,8 @@ def main():
     MF.f14_noise()
     r_sweeps()
     f19_seed_convergence_r1()
-    for fn in (r_confirmation, r_migration_classes, r_protection_modes, r_accounting_check):
+    for fn in (r_confirmation, r_migration_classes, r_protection_modes, r_accounting_check,
+               r_p6_decomposition):
         fn()
     try:
         MF.tables()

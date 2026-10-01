@@ -110,6 +110,7 @@ class PolicySpec:
     kpi_scale_key: str = ""          # "" = nominal limits, "matched" = validation-matched
     migrate: bool = True             # risk may trigger make-before-break migrations of live flows
     backup_refresh: bool = False     # risk re-selects the standby (backup) path, no interruption
+    primary_risk: bool = True        # risk enters primary-path selection (ablation switch)
 
 
 POLICY_SPECS: Dict[str, PolicySpec] = {
@@ -136,6 +137,13 @@ POLICY_SPECS: Dict[str, PolicySpec] = {
                                     migrate=False, backup_refresh=True),
     "protection_predictive_mig": PolicySpec(risk="predictor", restoration="protection",
                                             migrate=True, backup_refresh=True),
+    # Post-confirmation exploratory ablation of P6 (does not alter any policy above):
+    # risk used only for the primary path (standby as in P1b), or only for the standby.
+    "protection_predictive_route": PolicySpec(risk="predictor", restoration="protection",
+                                              migrate=False, backup_refresh=False),
+    "protection_predictive_standby": PolicySpec(risk="predictor", restoration="protection",
+                                                migrate=False, backup_refresh=True,
+                                                primary_risk=False),
 }
 POLICIES = tuple(POLICY_SPECS)
 
@@ -156,6 +164,8 @@ POLICY_LABEL: Dict[str, str] = {
     "protection_predictive": "P6 predictive protection",
     "protection_oracle": "P6o protection, oracle-refreshed backup",
     "protection_predictive_mig": "P6m predictive protection + migration",
+    "protection_predictive_route": "P6-route risk-aware primary only",
+    "protection_predictive_standby": "P6-standby risk-aware standby only",
 }
 
 
@@ -263,7 +273,7 @@ class Orchestrator:
             # P2 does not route onto elements that are themselves in alarm; this is
             # the analogue of the risk exclusion of the risk-aware policies.
             return frozenset(n for n in self.twin.nodes if self.kpi_alarm_node(n))
-        if not self.risk_aware:
+        if not self.risk_aware or not self.spec.primary_risk:
             return frozenset()
         limit = max(self.exclude_limit, self.budget[priority])
         return frozenset(nid for nid, n in self.twin.nodes.items() if n.risk >= limit)
@@ -279,14 +289,15 @@ class Orchestrator:
         excluded -= {flow.source, flow.destination}
         excluded = frozenset(excluded)
         candidates: List[List[str]] = []
+        ra = self.risk_aware and self.spec.primary_risk
 
         primary = self.twin.shortest_path(
-            flow.source, flow.destination, self.risk_aware, excluded, flow.demand_mbps
+            flow.source, flow.destination, ra, excluded, flow.demand_mbps
         )
         if primary:
             candidates.append(primary)
         for path in self.twin.k_shortest_paths(
-            flow.source, flow.destination, self.risk_aware, self.k
+            flow.source, flow.destination, ra, self.k
         ):
             if path in candidates:
                 continue
@@ -303,11 +314,11 @@ class Orchestrator:
         best, best_score = None, float("inf")
         for path in candidates:
             latency, loss = self.twin.path_predicted_kpi(path)
-            risk = self.twin.path_risk(path) if self.risk_aware else 0.0
+            risk = self.twin.path_risk(path) if ra else 0.0
             capacity_ok = self.twin.residual_capacity(path) >= flow.demand_mbps
             score = (latency / flow.max_latency_ms
                      + self.score_coef["loss"] * loss / max(1e-6, flow.max_loss))
-            if self.risk_aware:
+            if ra:
                 score += self._risk_coef(flow.priority) * risk
             if not capacity_ok:
                 score += 2.5

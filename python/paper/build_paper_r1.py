@@ -105,7 +105,8 @@ def load_results() -> Dict:
             "feedback_ablation_fixed.csv", "design_sensitivity.csv", "frontier.csv",
             "migration_cost_sweep.csv", "topology_sweep.csv", "parameter_sensitivity.csv",
             "controller_weight_sensitivity.csv", "accounting_check.csv",
-            "endogeneity_check.csv", "protection_modes.csv"))) + 12 * 2 * len(opt("horizon_sweep.csv")) + 12,
+            "endogeneity_check.csv", "protection_modes.csv")))
+            + int(2 * len(opt("p6_decomposition.csv")) / 3) + 12 * 2 * len(opt("horizon_sweep.csv")) + 12,
     }
 
 
@@ -2082,9 +2083,49 @@ def build(out_path: str) -> None:
         f"times (under common-cause disruption {RU.loc[(S6, 'protection_predictive'), 'backup_refreshes']:.0f} "
         "and "
         f"{RU.loc[(S6, 'protection_index'), 'backup_refreshes']:.0f}), none of which interrupts "
-        "traffic. The contributions of risk-aware primary-path choice and of standby refresh "
-        "to the P6 effect were not separated."
+        "traffic."
     )
+
+    p6d_path = os.path.join(TABDIR, "r_t_p6_decomposition.csv")
+    if os.path.exists(p6d_path):
+        p6d = pd.read_csv(p6d_path)
+        t_p6d = d.table(p6d, "Exploratory decomposition of predictive protection, run after "
+                        "the confirmation on the same 64 seeds. P6-route uses the risk "
+                        "estimate only to choose the primary path and keeps a risk-free "
+                        "standby path as in P1b; P6-standby chooses the primary path as P1b "
+                        "does and uses the risk estimate only to select and refresh the standby "
+                        "path. No parameter was changed; P6 reproduces the confirmation runs "
+                        "exactly.", fmt="{}", size=6.6)
+
+        def _pd(s, c):
+            r = p6d[(p6d.scenario == SCEN_LABEL[s]) & (p6d.contrast == c)].iloc[0]
+            v = r["paired difference [95% CI]"]
+            m = float(v.split(" ")[0])
+            lo, hi = [float(x) for x in v[v.index("[") + 1:v.index("]")].split(",")]
+            return m, lo, hi, float(r["relative [%]"])
+
+        def _desc(s):
+            out = []
+            for c, name in (("P6-route - P1b", "risk-aware primary-path choice alone"),
+                            ("P6-standby - P1b", "risk-aware standby selection alone")):
+                m, lo, hi, rel_ = _pd(s, c)
+                sig = "interval excludes zero" if (lo > 0 or hi < 0) else "interval includes zero"
+                out.append(f"{name} changes the loss by {rel_:+.1f}% ({m:+.2f}, {sig})")
+            mf, _, _, relf = _pd(s, "P6 - P1b")
+            return "; ".join(out) + f", against {relf:+.1f}% for the full policy"
+
+        d.p(
+            "Predictive protection uses the risk estimate in two places, and it is natural to "
+            f"ask which of them carries the effect. {t_p6d} separates them in an "
+            "exploratory ablation run after the confirmation on the same seeds. Under collapse "
+            f"{_desc(S4)}. Under common-cause disruption {_desc(S6)}. "
+            + "The effect of predictive protection therefore comes almost entirely from "
+            "keeping the standby path off endangered elements; using risk to choose the primary "
+            "path adds nothing detectable — plausibly because a well-chosen standby path already "
+            "absorbs the failures that a riskier primary path suffers — and the full policy is "
+            "indistinguishable from the standby-only variant in both scenarios." +
+            " The ablation is exploratory and was not part of the frozen protocol."
+        )
 
     # ------------------------------------------------------------ 7.10 horizon etc.
     d.h2("7.10 Horizon, feedback and sensitivity")
@@ -2239,7 +2280,9 @@ def build(out_path: str) -> None:
         f"reduced the loss by {min(_prot):.1f}–{max(_prot):.1f}% on the confirmation seeds. "
         "The second, which links this study to risk-aware backup provisioning [83], [84], [85], "
         "is exposure control through decisions that interrupt nothing: choosing a "
-        "low-risk primary path and keeping the standby path off endangered elements. Its "
+        "low-risk primary path and keeping the standby path off endangered elements; an "
+        "exploratory ablation (Section 7.9) attributes practically all of it to the standby "
+        "path. Its "
         f"effect is small, {-_c(S4, 'protection_predictive', 'protection'):.1f}% and "
         f"{-_c(S6, 'protection_predictive', 'protection'):.1f}% on top of protection, but it was "
         "confirmed on fresh seeds, holds under all three standby-capacity models and in nine of "
@@ -2263,7 +2306,8 @@ def build(out_path: str) -> None:
         "eight or in eighteen slots is irrelevant to that choice, and a wrong choice costs "
         "nothing because no traffic is moved. Migration is different: it moves live traffic at "
         "a price, so it profits from information about which elements are about to fail. That "
-        "is why the risk source matters among migration policies — at the nominal settings, "
+        "is why the risk source matters among migration policies — in the development "
+        "campaign at the nominal settings, "
         "perfect state knowledge used for migration has the lowest loss of all policies under "
         "collapse, and the learned predictor is ahead of the index where transient signatures "
         "are frequent — while it does not matter among protection policies. The information "
@@ -2396,7 +2440,8 @@ def build(out_path: str) -> None:
         "decisions that interrupt no traffic — primary-path choice and standby refresh — added "
         f"a confirmed {-_c(S4, 'protection_predictive', 'protection'):.1f}% under "
         f"infrastructure collapse and {-_c(S6, 'protection_predictive', 'protection'):.1f}% "
-        "under common-cause disruption, and for this role a contemporaneous degradation index "
+        "under common-cause disruption, practically all of it through the choice of the standby "
+        "path, and for this role a contemporaneous degradation index "
         + ("was statistically equivalent to" if _eq_all else "performed like")
         + f" the learned predictor, with at most {_hrmax:.1f}% left for perfect state "
         "knowledge in exploratory comparisons. Predictive make-before-break migration was not "
