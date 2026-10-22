@@ -28,6 +28,7 @@ BANNED = [
     r"does better than predictive migration", r"two per cent of one another",
     r"previously reported", r"anticipation drives", r"pre-?registered",
     r"does not hold", r"pays most reliably through protection",
+    r"exact probability", r"standby selection adds a confirmed", r"tarasov-nikita",
 ]
 # phrases allowed when negated / quoted as limitation
 ALLOW = [r"not an external validation", r"not external validation",

@@ -4,9 +4,9 @@ EPISODES ?= 8
 STEPS ?= 500
 SEEDS ?= 12
 
-.PHONY: all setup dataset train experiments sweep figures test clean docker
+.PHONY: all setup dataset train experiments sweep figures test clean docker campaign sweeps confirmation paper qa
 
-all: dataset heldout train experiments robustness figures paper
+all: dataset heldout train campaign sweeps confirmation figures paper qa
 
 setup:
 	$(PY) -m pip install -r requirements.txt
@@ -37,15 +37,40 @@ heldout:
 		--scenarios S5_leo_handover S6_common_cause \
 		--out data/processed/heldout_dataset.parquet
 
+SWEEPS ?= detection_delay frontier migration_cost_sweep misspec_closed_loop large_topology \
+	feedback_ablation_fixed design_sensitivity topology_sweep parameter_sensitivity \
+	controller_weight_sensitivity accounting_check endogeneity_check protection_modes \
+	p6_decomposition
+WORKERS ?= 4
+OUT ?= ../submission_R1
+
+campaign:
+	$(PY) -m python.experiments.campaign_chunks run 0 168 $(WORKERS)
+	$(PY) -m python.experiments.campaign_chunks merge
+
+sweeps:
+	for e in $(SWEEPS); do n=$$($(PY) -m python.experiments.revision_sweeps count $$e | tail -1); \
+		$(PY) -m python.experiments.revision_sweeps run $$e 0 $$n $(WORKERS); \
+		$(PY) -m python.experiments.revision_sweeps merge $$e; done
+	$(PY) -m python.experiments.robustness horizon --seeds 12
+
+confirmation:
+	$(PY) -m python.experiments.revision_sweeps run confirmation 0 256 $(WORKERS)
+	$(PY) -m python.experiments.revision_sweeps merge confirmation
+	$(PY) -m python.experiments.confirmation_analysis
+
 figures:
-	$(PY) -m python.experiments.make_figures2
+	$(PY) -m python.experiments.make_figures_r1
 
 paper:
-	$(PY) -m python.paper.build_paper_ress --out "../Predictive_Resilience_Hybrid_5G6G_LEO.docx"
-	$(PY) -m python.paper.build_paper_ua   --out "../submission/Прогнозована_стійкість_UA.docx"
-	$(PY) -m python.paper.build_latex --docx "../Predictive_Resilience_Hybrid_5G6G_LEO.docx" \
-		--out ../submission/latex
-	$(PY) -m python.paper.build_bib --out ../submission/latex/references.bib
+	mkdir -p $(OUT)
+	$(PY) -m python.paper.build_paper_r1 --out $(OUT)/Manuscript_R1.docx
+	$(PY) -m python.paper.build_response_r1 --out $(OUT) --captions $(OUT)/Manuscript_R1.docx.captions.json
+	$(PY) -m python.paper.set_metadata $(OUT)
+	$(PY) -m python.paper.build_latex --docx $(OUT)/Manuscript_R1.docx --out $(OUT)/els-article-R1
+
+qa:
+	$(PY) -m python.paper.qa_r1 --docx $(OUT)/Manuscript_R1.docx --pkg $(OUT)
 
 test:
 	$(PY) -m pytest tests -q

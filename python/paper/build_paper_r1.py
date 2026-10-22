@@ -366,7 +366,7 @@ REFERENCES: List[str] = [
     "J. D. Hunter, “Matplotlib: a 2D graphics environment,” Computing in Science & Engineering, vol. 9, no. 3, pp. 90–95, 2007.",
     "R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction, 2nd ed. MIT Press, 2018.",
     "N. C. Luong et al., “Applications of deep reinforcement learning in communications and networking: a survey,” IEEE Communications Surveys & Tutorials, vol. 21, no. 4, pp. 3133–3174, 2019.",
-    "N. Tarasov and R. Zinko, \u201cReproducibility artifact for: Predictive resilience of hybrid 5G/6G-class and LEO satellite networks \u2014 a digital-twin framework for failure anticipation and risk-aware recovery,\u201d Zenodo, 2026, doi:10.5281/zenodo.22084966.",
+    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, doi:10.5281/zenodo.22084966.",
     "P. Pan, G. Swallow, and A. Atlas, \u201cFast reroute extensions to RSVP-TE for LSP tunnels,\u201d IETF RFC 4090, 2005, doi:10.17487/RFC4090.",
     "A. M. Law, Simulation Modeling and Analysis, 5th ed. McGraw-Hill, 2015.",
     "C. Westphal, L. Han, and R. Li, “LEO satellite networking relaunched: survey and current research challenges,” ITU Journal on Future and Evolving Technologies, vol. 4, no. 4, pp. 711–736, 2023.",
@@ -578,7 +578,8 @@ def build(out_path: str) -> None:
         "Evidence from the evaluated systems, with the central comparisons confirmed on "
         "independent seeds under a frozen protocol, that protection is the most consistent "
         "source of gain, "
-        "that risk-informed standby selection adds a small confirmed improvement for which a "
+        "that risk-informed protection adds a small confirmed improvement, which an exploratory "
+        "decomposition attributes almost entirely to standby-path selection and for which a "
         "simple degradation index suffices, and that the benefit of pre-emptive migration is "
         "partly a detection-delay effect and depends on gradual degradation and a nearly free "
         "switch-over.",
@@ -1309,9 +1310,9 @@ def build(out_path: str) -> None:
         "P5 perfect state, band map: risk computed as a linear map of the true latent health "
         "between h = 0.35 (risk 0) and h = 0.18 (risk 1), clipped to [0, 1]. The map is not "
         "calibrated to the controller's probability scale and is kept to show the "
-        "consequence. P5c replaces it by the exact probability that an element in health "
-        "h fails within H, computed by Monte Carlo simulation of the generative model for each "
-        "scenario and element class (6,000 trajectories per point of a health grid, "
+        "consequence. P5c replaces it by a Monte Carlo estimate of the conditional probability "
+        "that an element in health h fails within H, obtained by simulating the generative model "
+        "for each scenario and element class (6,000 trajectories per point of a health grid, "
         "interpolated); an element that has already failed is assigned risk 1, so P5c, like the "
         "telemetry-driven policies, can act before the twin's detector confirms a failure. P5c "
         "is the calibrated perfect-state reference.",
@@ -1589,7 +1590,8 @@ def build(out_path: str) -> None:
     d.p(
         f"{t_cm}, {t_ct} and {fig_cf} report the experiment specified in Section 6.5, run once "
         "after the code freeze on 64 seeds that had never been used. The primary hypothesis "
-        "B1, that risk-informed standby selection adds resilience on top of 1:1 protection, is "
+        "B1, that predictive protection (risk-informed primary-path and standby selection) adds "
+        "resilience on top of 1:1 protection, is "
         "supported in both scenarios: P6 − P1b is "
         f"{cfs(S4, 'protection_predictive', 'protection')} under collapse "
         f"({hp(S4, 'protection_predictive', 'protection')}, d_z = "
@@ -1651,7 +1653,7 @@ def build(out_path: str) -> None:
         + " slot-equivalents, several times smaller than both the protocol margins and the "
         "B1 effect. The protocol margins themselves are of the same size as the B1 effect, so "
         "B3 on its own would not exclude a difference as large as the confirmed benefit of "
-        "risk-informed standby selection; it is the observed bounds that make the two risk "
+        "risk-informed protection; it is the observed bounds that make the two risk "
         "sources practically interchangeable. Under common-cause disruption the index is in fact slightly ahead of the "
         "predictor, by a margin far inside the equivalence bound. For selecting and refreshing "
         "standby paths, a contemporaneous degradation index is as good as the trained "
@@ -2394,7 +2396,7 @@ def build(out_path: str) -> None:
         "path and is charged C_r. Standby capacity is not reserved in the main model, but a "
         "switch-over happens only if the standby path can carry the flow at that moment; "
         "Section 7.9 shows that reserved and optimistic capacity models change the absolute "
-        "numbers but not the confirmed effect of risk-informed standby selection. Much of the "
+        "numbers but not the confirmed effect of risk-informed protection. Much of the "
         "protection advantage rests on the pre-signalling assumption: if the switch-over cost "
         f"rises to the order of the restoration interval, protection loses its advantage "
         f"({fig_mig}). Shared protection and protocol-level session continuity are not "
@@ -2442,8 +2444,8 @@ def build(out_path: str) -> None:
         "decisions that interrupt no traffic (primary-path choice and standby refresh) added "
         f"a confirmed {-_c(S4, 'protection_predictive', 'protection'):.1f}% under "
         f"infrastructure collapse and {-_c(S6, 'protection_predictive', 'protection'):.1f}% "
-        "under common-cause disruption, practically all of it through the choice of the standby "
-        "path, and for this role a contemporaneous degradation index "
+        "under common-cause disruption, which an exploratory ablation attributes practically "
+        "entirely to the choice of the standby path, and for this role a contemporaneous degradation index "
         + ("was statistically equivalent to" if _eq_all else "performed like")
         + f" the learned predictor, with at most {_hrmax:.1f}% left for perfect state "
         "knowledge in exploratory comparisons. Predictive make-before-break migration was not "
@@ -2531,7 +2533,7 @@ def build(out_path: str) -> None:
         "control-plane services and deployment manifests), together with the processed result "
         "tables from which every figure and table in this manuscript is generated, is archived on "
         "Zenodo [78]. The development version is maintained on GitHub at "
-        "https://github.com/tarasov-nikita/predictive-resilience-digital-twin. A snapshot of the "
+        "https://github.com/Dev-Nikita/dtwin-humanitarian. A snapshot of the "
         "same reproducibility package is provided as supplementary material with this submission. "
         "It includes the frozen confirmation protocol, its analysis script, the commit "
         "identifier of the code freeze and the confirmation results. "

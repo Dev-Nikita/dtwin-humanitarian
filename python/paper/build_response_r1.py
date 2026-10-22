@@ -463,8 +463,9 @@ def build_texts():
     R["R3.6"] = ("P5 mapping undefined; perfect state with a mis-calibrated map is not an oracle.",
         "Agreed. The original map is now defined (linear in health between 0.35 and 0.18) and "
         "retained as P5 to show its consequence. We added P5c, the calibrated perfect-state "
-        "reference: the exact probability that an element at health h fails within H, computed "
-        "by Monte Carlo simulation of the generative model per scenario and element class. "
+        "reference: a Monte Carlo estimate of the conditional probability that an element at "
+        "health h fails within H, obtained from 6,000 simulated trajectories of the generative "
+        "model per health-grid point, scenario and element class. "
         f"Under collapse P5c performs {PR.loc[(S4, 'oracle_calibrated')]:.0f} migrations per run "
         f"against {PR.loc[(S4, 'oracle')]:.0f} for P5 and reaches a loss of "
         f"{RL.loc[S4, 'oracle_calibrated']:.2f} against {RL.loc[S4, 'oracle']:.2f} for P5, "
@@ -492,10 +493,12 @@ def build_texts():
         "statements were checked against the result files in an independent pass before "
         "resubmission.")
     R["R3.10"] = ("State the incremental value of prediction more narrowly.",
-        "Fully agreed. The paper is now framed as a decomposition: protection carries most of "
-        "the gain; risk-informed standby selection adds a small confirmed improvement for "
-        "which a simple index suffices; and pre-emptive migration on predicted risk pays only "
-        "where degradation is gradual, detection is slow and the switch-over is nearly free. "
+        "Fully agreed. The paper is now framed as a decomposition: protection is the most "
+        "consistent source of gain; risk-informed protection adds a small confirmed "
+        "improvement, which an exploratory ablation attributes almost entirely to standby-path "
+        "selection and for which a simple index suffices; and pre-emptive migration on "
+        "predicted risk is most favourable where degradation is gradual and the switch-over is "
+        "inexpensive, with a longer detection delay substantially amplifying its benefit. "
         "The abstract and conclusion state these findings with the qualifier 'in the "
         "evaluated systems'.")
     R["R3.11"] = ("Criticality-weighted result is exploratory.",
@@ -579,7 +582,7 @@ def write_cover(out_dir):
     r, RL, rel, pc, _ = load()
     cf, prot, hrmax, eq_all = _conf()
     text = [
-        "1 October 2026",
+        "22 October 2026",
         "Editor, Reliability Engineering & System Safety",
         "Re: Revised manuscript JRESS-D-26-06464",
         "Dear Editor,",
@@ -601,13 +604,14 @@ def write_cover(out_dir):
         "the code and wrote a confirmation protocol with fixed hypotheses, multiplicity "
         "corrections and equivalence margins before running 64 previously unused seeds. In the "
         f"evaluated systems, plain protection reduces resilience loss by {min(prot):.1f}–"
-        f"{max(prot):.1f}% relative to reactive restoration; risk-informed standby selection "
+        f"{max(prot):.1f}% relative to reactive restoration; risk-informed protection "
         f"adds a confirmed {-cf(S4, 'protection_predictive', 'protection'):.1f}% under "
         f"infrastructure collapse and {-cf(S6, 'protection_predictive', 'protection'):.1f}% "
-        "under common-cause disruption, with a simple degradation index "
+        "under common-cause disruption, which a subsequent exploratory ablation attributes "
+        "almost entirely to risk-aware standby-path selection, with a simple degradation index "
         + ("statistically equivalent to" if eq_all else "performing like")
         + " the learned predictor in that role; and pre-emptive migration on predicted risk "
-        "is competitive with protection only where degradation is gradual, while under "
+        "can be competitive with protection where degradation is gradual, while under "
         "common-cause disruption its gain is almost entirely a bypass of the detection delay. We believe this controlled "
         "decomposition, with a confirmation protocol committed before any confirmation run, is a more useful and more reliable contribution for RESS "
         "readers, and the response letter documents every change point by point.",
@@ -625,11 +629,11 @@ def write_cover(out_dir):
     open(os.path.join(out_dir, "Cover_Letter_R1.md"), "w").write("\n\n".join(text))
 
     hl = [
-        "Simulation-based digital twin compares 15 recovery policies on common random numbers",
         f"Plain 1:1 protection cuts resilience loss by {min(prot):.1f}-{max(prot):.1f}% vs reactive restoration",
-        f"Risk-informed standby selection adds a confirmed {-cf(S4, 'protection_predictive', 'protection'):.1f}% and {-cf(S6, 'protection_predictive', 'protection'):.1f}% on new seeds",
+        f"Risk-informed protection adds a confirmed {-cf(S4, 'protection_predictive', 'protection'):.1f}% and {-cf(S6, 'protection_predictive', 'protection'):.1f}% on independent seeds",
+        "Exploratory ablation attributes this gain mainly to standby-path selection",
         "For standby selection a degradation index is equivalent to the learned predictor",
-        "Migration gain under common-cause shocks is a bypass of the detection delay",
+        "Migration gain under common-cause shocks is mostly a detection-delay bypass",
     ]
     for h in hl:
         assert len(h) <= 85, (len(h), h)

@@ -1,6 +1,6 @@
 {
  "protocol": "R1_CONFIRMATION_PROTOCOL.md",
- "analysis_commit": "8850528c55a6d5db1457ccb9c5a5b8be4a34b0f4",
+ "analysis_commit": "2fe2f8436766f307f7d5f61b5114d0dec074d0e1",
  "n_runs": 1792,
  "seeds": [
   20000,
@@ -82,5 +82,7 @@
   "protection_oracle",
   "protection_predictive",
   "reactive"
- ]
+ ],
+ "freeze_commit": "5dbaeaf53ddd53b0eeae203a163d5764d80c3279",
+ "freeze_tag": "r1b-freeze"
 }
