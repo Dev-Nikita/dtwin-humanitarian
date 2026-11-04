@@ -165,7 +165,7 @@ def build_texts():
         "is not supported, and we have rewritten the paper around what the evidence does "
         "support. The protection-based policies were introduced during the revision, so their "
         "comparisons on the development seeds were hypothesis-generating. We therefore froze "
-        f"the code (commit recorded in the supplementary material), wrote a confirmation "
+        f"the code (tag r1b-freeze in the public repository; commit identifiers in the supplementary material), wrote a confirmation "
         "protocol with fixed hypotheses, families, corrections and equivalence margins, "
         "committed it together with its analysis script, and only then ran "
         f"{len(MAN.get('seeds', []))} seeds that had never been used ({len(CR):,} runs). The "
@@ -582,7 +582,7 @@ def write_cover(out_dir):
     r, RL, rel, pc, _ = load()
     cf, prot, hrmax, eq_all = _conf()
     text = [
-        "22 October 2026",
+        "4 November 2026",
         "Editor, Reliability Engineering & System Safety",
         "Re: Revised manuscript JRESS-D-26-06464",
         "Dear Editor,",
@@ -616,8 +616,8 @@ def write_cover(out_dir):
         "decomposition, with a confirmation protocol committed before any confirmation run, is a more useful and more reliable contribution for RESS "
         "readers, and the response letter documents every change point by point.",
         "The revised manuscript has not been submitted elsewhere. The updated code, the frozen "
-        "protocol and the result files are provided as supplementary material and will be "
-        "archived as a new version of the Zenodo record.",
+        "protocol and the result files are provided as supplementary material and are "
+        "archived as release v1.1-R1 of the Zenodo record (concept DOI 10.5281/zenodo.22084965).",
         "Yours sincerely,",
         "Nikita Tarasov (corresponding author) and Roman Zinko",
         "Lviv Polytechnic National University",

@@ -424,6 +424,7 @@ PREAMBLE = r"""%% Elsevier CAS template (els-cas-templates), double-column artic
 %% tables need the full text block.
 \documentclass[a4paper,fleqn]{cas-sc}
 
+\usepackage{lmodern}
 \usepackage[numbers,sort&compress]{natbib}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}

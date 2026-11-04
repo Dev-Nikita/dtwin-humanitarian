@@ -366,7 +366,7 @@ REFERENCES: List[str] = [
     "J. D. Hunter, “Matplotlib: a 2D graphics environment,” Computing in Science & Engineering, vol. 9, no. 3, pp. 90–95, 2007.",
     "R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction, 2nd ed. MIT Press, 2018.",
     "N. C. Luong et al., “Applications of deep reinforcement learning in communications and networking: a survey,” IEEE Communications Surveys & Tutorials, vol. 21, no. 4, pp. 3133–3174, 2019.",
-    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, doi:10.5281/zenodo.22084966.",
+    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, doi:10.5281/zenodo.22084965 (all versions; revision R1 is release v1.1-R1).",
     "P. Pan, G. Swallow, and A. Atlas, \u201cFast reroute extensions to RSVP-TE for LSP tunnels,\u201d IETF RFC 4090, 2005, doi:10.17487/RFC4090.",
     "A. M. Law, Simulation Modeling and Analysis, 5th ed. McGraw-Hill, 2015.",
     "C. Westphal, L. Han, and R. Li, “LEO satellite networking relaunched: survey and current research challenges,” ITU Journal on Future and Evolving Technologies, vol. 4, no. 4, pp. 711–736, 2023.",
@@ -473,11 +473,12 @@ def build(out_path: str) -> None:
         "policies, a controlled set of mechanistic contrasts in risk source, criticality "
         "differentiation and restoration mechanism, are compared on common random numbers with "
         "a physically consistent interruption accounting, in a development campaign of "
-        f"{R['n_runs']:,} runs and a frozen confirmation on 64 independent seeds "
+        f"{R['n_runs']:,} runs and a frozen confirmation on 64 independent seeds of the same model "
         f"({len(R['conf']):,} runs). Plain 1:1 protection, which uses no risk information, "
         f"reduces cumulative resilience loss relative to reactive restoration by "
         f"{min(_prot):.1f}–{max(_prot):.1f}% across the confirmation scenarios. Spending the "
-        "risk estimate only on primary-path choice and standby-path refresh adds a confirmed "
+        "risk estimate only on primary-path choice and standby-path refresh (risk-informed "
+        "protection) adds a confirmed "
         f"{-_c(S4, 'protection_predictive', 'protection'):.1f}% under infrastructure collapse "
         f"and {-_c(S6, 'protection_predictive', 'protection'):.1f}% under common-cause "
         "disruption; in that role a contemporaneous degradation index is "
@@ -1400,7 +1401,10 @@ def build(out_path: str) -> None:
         "fixed before any confirmation seed was run. Section 7.3 also reports the smallest "
         "margin for which the observed result would still establish equivalence. The "
         "protocol, the code freeze and the confirmation results are in the supplementary "
-        "material."
+        "material; the public repository history contains the protocol commit, tagged "
+        "r1b-freeze, and the later commit at which the confirmation was run. The confirmation "
+        "replicates the effect within the evaluated simulation model; it does not sample "
+        "other physical systems."
     )
 
     # ---------------------------------------------------------- 7. Results
@@ -2023,8 +2027,10 @@ def build(out_path: str) -> None:
             f"is ahead (P6 {lgL(S6, 'protection_predictive'):.2f}, P1b "
             f"{lgL(S6, 'protection'):.2f}, P4 {lgL(S6, 'proactive_ai'):.2f}). The scenario-"
             "dependence of the mechanism ranking found on the reference network therefore "
-            "persists at larger scale; we do not claim that the larger network makes the model "
-            "representative of an operational constellation."
+            "persists at larger scale. We treat this experiment as a structural sensitivity "
+            "analysis, not as a satellite validation: the larger network has no orbital mechanics "
+            "or visibility windows, and we do not claim that it makes the model representative "
+            "of an operational constellation."
         )
     _r7 = R["runs"][R["runs"]["scenario"] == "S7_external_ntn"]
     _a7 = _r7[_r7.policy == "proactive_ai"]
@@ -2435,7 +2441,8 @@ def build(out_path: str) -> None:
         "twin in which the degradation state is hidden, detection is delayed and fifteen "
         "recovery policies are compared on common random numbers with a physically consistent "
         "account of every interruption. The central comparisons were re-tested on 64 "
-        "independent seeds under a protocol frozen before they were run."
+        "independent seeds of the same simulation model under a protocol frozen before they "
+        "were run."
     )
     d.p(
         "In the evaluated systems the answer is layered. Plain 1:1 protection, without any "
