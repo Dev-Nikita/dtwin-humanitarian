@@ -86,7 +86,8 @@ def load_results() -> Dict:
         "MED": piv("avail_medical_telemetry"),
         "n_seeds": int(runs.groupby(["scenario", "policy"]).size().max()),
         "n_runs": len(runs),
-        "REF": piv("mean_recovery_failure"),
+        "REF": (runs.groupby(["scenario", "policy"]).outage_slots_failure.sum()
+                / runs.groupby(["scenario", "policy"]).failure_interruptions.sum()).unstack(),
         "dd": opt("detection_delay.csv"),
         "misspec_off": opt("misspec_offline.csv"),
         "large": opt("large_topology.csv") if os.path.exists(
@@ -366,7 +367,7 @@ REFERENCES: List[str] = [
     "J. D. Hunter, “Matplotlib: a 2D graphics environment,” Computing in Science & Engineering, vol. 9, no. 3, pp. 90–95, 2007.",
     "R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction, 2nd ed. MIT Press, 2018.",
     "N. C. Luong et al., “Applications of deep reinforcement learning in communications and networking: a survey,” IEEE Communications Surveys & Tutorials, vol. 21, no. 4, pp. 3133–3174, 2019.",
-    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, doi:10.5281/zenodo.22084965 (all versions; revision R1 is release v1.1-R1).",
+    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, version v1.1-R1, doi:10.5281/zenodo.23957597.",
     "P. Pan, G. Swallow, and A. Atlas, \u201cFast reroute extensions to RSVP-TE for LSP tunnels,\u201d IETF RFC 4090, 2005, doi:10.17487/RFC4090.",
     "A. M. Law, Simulation Modeling and Analysis, 5th ed. McGraw-Hill, 2015.",
     "C. Westphal, L. Han, and R. Li, “LEO satellite networking relaunched: survey and current research challenges,” ITU Journal on Future and Evolving Technologies, vol. 4, no. 4, pp. 711–736, 2023.",
@@ -467,33 +468,32 @@ def build(out_path: str) -> None:
         "Hybrid terrestrial–satellite networks keep critical services alive when regional "
         "infrastructure is lost, and failure prediction is often proposed as a way of making "
         "them more resilient. We ask where such a gain comes from. A simulation-based digital "
-        "twin of a hybrid 5G/6G-class and low-Earth-orbit network hides the degradation state "
-        "of every element behind noisy telemetry and a detection delay, and a calibrated "
-        "classifier estimates the probability of failure within a horizon. Fifteen recovery "
-        "policies, a controlled set of mechanistic contrasts in risk source, criticality "
-        "differentiation and restoration mechanism, are compared on common random numbers with "
-        "a physically consistent interruption accounting, in a development campaign of "
-        f"{R['n_runs']:,} runs and a frozen confirmation on 64 independent seeds of the same model "
-        f"({len(R['conf']):,} runs). Plain 1:1 protection, which uses no risk information, "
-        f"reduces cumulative resilience loss relative to reactive restoration by "
-        f"{min(_prot):.1f}–{max(_prot):.1f}% across the confirmation scenarios. Spending the "
-        "risk estimate only on primary-path choice and standby-path refresh (risk-informed "
-        "protection) adds a confirmed "
+        "twin of a hybrid 5G/6G-class and low-Earth-orbit network hides element degradation "
+        "behind noisy, delayed telemetry, and a calibrated classifier estimates the probability "
+        "of failure within a horizon. Fifteen recovery policies, a controlled set of "
+        "mechanistic contrasts in risk source, criticality differentiation and restoration "
+        "mechanism, are compared on common random numbers in "
+        f"{R['n_runs']:,} development runs and a frozen confirmation on 64 independent seeds "
+        f"of the same model ({len(R['conf']):,} runs). Plain 1:1 protection, which uses no risk "
+        f"information, reduces cumulative resilience loss relative to reactive restoration by "
+        f"{min(_prot):.1f}–{max(_prot):.1f}%. Spending the risk estimate only on primary-path "
+        "choice and standby-path refresh (risk-informed protection) adds a confirmed "
         f"{-_c(S4, 'protection_predictive', 'protection'):.1f}% under infrastructure collapse "
         f"and {-_c(S6, 'protection_predictive', 'protection'):.1f}% under common-cause "
         "disruption; in that role a contemporaneous degradation index is "
         + ("statistically equivalent to" if _eq_all else "practically indistinguishable from")
-        + f" the learned predictor, and in exploratory perfect-state comparisons the remaining "
-        f"headroom was at most {_hrmax:.1f}%. "
+        + f" the learned predictor, and perfect state adds at most {_hrmax:.1f}% (exploratory). "
         "Predictive make-before-break migration is not significantly different from "
         "protection under collapse and satellite-segment degradation after multiplicity "
-        "correction, but worse under handover "
-        "dynamics and common-cause disruption; under the latter its gain over reactive "
-        "restoration is almost entirely a bypass of the detection delay. Its remaining, "
-        "anticipatory gain is confined to gradual degradation and is sensitive to the "
-        "switch-over cost, the topology and the seed set. In the evaluated systems, risk "
-        "information produced its most consistent gains when used within protection-based "
-        "actions rather than for pre-emptive migration."
+        "correction, but worse under handover dynamics and common-cause disruption; under the "
+        "latter its gain over reactive restoration is almost entirely a bypass of the "
+        "detection delay. Its remaining gain is confined to gradual degradation and depends on "
+        "the switch-over cost, the topology and the seed set. In an exploratory, externally "
+        "parameterised satellite stress test, migration was within noise of reactive "
+        f"restoration ({rel_(S7, 'proactive_ai', 'reactive'):+.1f}%) while protection kept a "
+        f"{-rel_(S7, 'protection', 'reactive'):.0f}% reduction. In the evaluated systems, risk "
+        "information produced its most consistent gains within protection-based actions "
+        "rather than in pre-emptive migration."
     )
     d.p("Keywords: predictive resilience; failure anticipation; digital twin; protection and "
         "restoration; dynamic reliability; non-terrestrial networks; common-cause failure; "
@@ -883,7 +883,8 @@ def build(out_path: str) -> None:
         "the mapping used to anchor the reconfiguration cadence of the non-terrestrial "
         "scenarios to measured schedules [51], [52]; thus D = 3 s, C_r is between 4 and 12 s "
         "and C_m is 0 or 1 s. Every interruption is counted in whole slots: an action taken in "
-        "slot t with duration C interrupts the flow in slots t, ..., t + C − 1, that is in "
+        "slot t with duration C interrupts the flow in slots t, ..., t + C − 1 (a unit test checks "
+        "that a zero-duration switch-over interrupts no slot), that is in "
         "exactly C slots: a switch-over with C_m = 0 interrupts nothing, one with C_m = 1 a "
         "single slot, and a restoration between four and twelve slots. Durations are drawn "
         "per physical event, not per call (Section 6.4). Availability, resilience loss, recovery time and the Kaplan–Meier "
@@ -1045,7 +1046,12 @@ def build(out_path: str) -> None:
         "nominal kappa = 1 the most critical class migrates at 0.80 theta*, that is on weaker "
         "evidence than the level at which the model itself would raise an alarm, while "
         "delay-tolerant traffic waits for 2.5 times that evidence. The ordering holds for any "
-        "kappa, the comparison against theta* only for kappa b_c < 1. The rule inherits the "
+        "kappa, the comparison against theta* only for kappa b_c < 1. The ladder was fixed before "
+        "the campaign and not tuned: the class with criticality 4 acts at the operating point "
+        "itself, the most critical class slightly below it, and each step down in criticality "
+        "multiplies the required evidence by roughly 1.3 to 1.4, so that the least critical "
+        "class waits for 2.5 times theta*; flat, shallower and steeper ladders are compared in "
+        "Section 7.10. The rule inherits the "
         "statistical properties of the predictor, so re-training the model automatically "
         "re-scales the policy. The migration trigger compares the bottleneck path risk "
         "R_inf(P), the largest element risk on the path, against tau_c. Among the least-cost path "
@@ -1083,8 +1089,9 @@ def build(out_path: str) -> None:
         "exceeds tau_c. The predictive-protection policies leave "
         "the live flow where it is and use the risk only for decisions that interrupt nothing: "
         "the risk-augmented cost of Eq. (8) selects the primary path at admission, with elements "
-        "whose risk exceeds the exclusion limit removed from the candidates exactly as for the "
-        "migration policies, and "
+        "whose risk is at least the exclusion limit max(tau_c, min(0.95, 2.5 theta*)) removed "
+        "from the candidates exactly as for the migration policies (the analogue of the rule "
+        "that P2 does not route onto elements that are in alarm), and "
         "whenever the standby path of a flow contains an element whose risk exceeds tau_c, or "
         "is observed down, a new node-disjoint standby path is computed on the risk-augmented "
         "graph with those elements excluded. The switch-over itself remains detection-driven, "
@@ -1336,7 +1343,7 @@ def build(out_path: str) -> None:
         f"the predictor at theta* raises alarms in {100 * MATCH['alarm_rate']:.2f}% of "
         f"element-slots, which fixes the index quantile at {MATCH['quantile']:.3f} and the KPI "
         f"scale factor at {MATCH['kpi_scale_at_operating_point']:.3f}. This closed-loop alarm "
-        "rate differs from the offline rates of Tables 7 and 31, which refer to observation "
+        "rate differs from the offline rates of Table 7 and Appendix B, which refer to observation "
         "windows of the training corpus. Both values are frozen before any evaluation run."
     )
     d.h2("6.4 Protocol and statistical analysis")
@@ -1550,7 +1557,7 @@ def build(out_path: str) -> None:
                       "development campaign (24 seeds; uncorrected Wilcoxon signed-rank p). "
                       "Negative differences favour the first-named policy.", fmt="{}", size=6.3)
     d.p(
-        f"{t_contr} lists the paired contrasts that isolate each mechanism in every stressed "
+        f"{t_contr} lists the paired contrasts that isolate each mechanism in S3–S7 "
         "scenario. They are exploratory and are reported with intervals, not as tests."
     )
 
@@ -1728,7 +1735,8 @@ def build(out_path: str) -> None:
                    "Recovery time separated by the cause of the interruption (development "
                    "campaign). Failure-induced interruptions start when an element on the active "
                    "path fails; migration-induced interruptions are the switch-over slots of a "
-                   "make-before-break migration away from a working path.", fmt="{:g}",
+                   "make-before-break migration away from a working path. Recovery times are pooled over "
+                   "all interruptions of the 24 runs; a dash marks a cause with no interruption.", fmt="{:g}",
                    size=6.8)
     d.p(
         f"{t_rs} separates recovery time by cause. The large reduction in mean recovery time "
@@ -1988,7 +1996,7 @@ def build(out_path: str) -> None:
         "The predictor is trained and tested on noisy transformations of the very latent "
         "variable that defines failure, so the offline metrics validate it only within the "
         "generative family that produced them, and perturbing parameters of that family is "
-        "not misspecification. We therefore built a second world that shares no dynamics with "
+        "not misspecification. We therefore built a second world that shares no degradation dynamics with "
         "the first: health decreases monotonically through gamma-distributed wear increments "
         "with no mean reversion, and telemetry reflects the health of four slots earlier "
         "through different exponents and with twice the measurement noise. Frozen and applied "
@@ -2219,7 +2227,8 @@ def build(out_path: str) -> None:
                    "shallow 0.90–1.75, nominal 0.80–2.50, steep 0.50–4.00) and one-at-a-time "
                    "changes of the loss coefficient (nominal 4), the risk base (nominal 3) and "
                    "the criticality slope (nominal 0.6). The protection reference P1b does not "
-                   "use these coefficients and is run once. 24 paired seeds.", fmt="{}",
+                   "use these coefficients and is run once. 24 paired seeds of the sweep seed set "
+                   "7000 + 61k, so the nominal values differ from Table 9.", fmt="{}",
                    size=6.2)
     t_pa = d.table(pd.read_csv(os.path.join(TABDIR, "r_t_parameters.csv")).replace({"setting": {"lambda0 x0.5": "nu_0 x0.5", "lambda0 x2.0": "nu_0 x2.0"}}),
                    "Sensitivity to the degradation-model parameters under collapse: baseline "
@@ -2339,7 +2348,9 @@ def build(out_path: str) -> None:
         "free: at C_m = 0 predictive migration has the lowest loss of the three swept policies "
         "under collapse, at one slot "
         "it is already behind protection. Degradation must be gradual and observable, which "
-        "excludes common-cause shocks and scheduled reconfiguration. And the graph must offer "
+        "excludes common-cause shocks and scheduled reconfiguration; the externally "
+        "parameterised stress test S7, where predictive migration was within noise of reactive "
+        "restoration, is an example. And the graph must offer "
         "alternatives to move to: on the 98-element topology, with three orbital planes, "
         "predictive migration had the lowest loss under collapse. The gap "
         "between the learned predictor and perfect state in the migration role is the "
@@ -2466,7 +2477,10 @@ def build(out_path: str) -> None:
         "world predictive migration was ahead of protection under collapse, while the "
         "confirmation seeds found no significant difference; that comparison is therefore "
         "reported as system- and seed-dependent and not as settled. The predictor's "
-        "own accuracy is established only within the model family it was trained on."
+        "own accuracy is established only within the model family it was trained on. In the "
+        "exploratory, externally parameterised stress test S7, predictive migration was within "
+        f"noise of reactive restoration ({rel_(S7, 'proactive_ai', 'reactive'):+.1f}%) while "
+        f"protection kept a {-rel_(S7, 'protection', 'reactive'):.0f}% reduction."
     )
     d.p(
         "For operators and designers the implication is to spend risk information where "
@@ -2485,9 +2499,11 @@ def build(out_path: str) -> None:
     d.h1("Appendix A. Complete policy comparison")
     d.p("The table gives every policy in every scenario, averaged over 24 paired seeds. "
         "Recovery is reported both over all interruptions and over failure-induced "
-        "interruptions only (Section 7.4). Recovery times are per-run means averaged over "
-        "seeds, so where few interruptions occur (S5) the all-interruption average can lie "
-        "slightly outside the range of the cause-specific averages.")
+        "interruptions only (Section 7.4). Recovery times are pooled over all interruptions of "
+        "the 24 runs, so runs without an interruption of a given cause do not enter that "
+        "average; a dash marks configurations with no interruption. SLA is the SLA-compliant "
+        "availability over all flow-slots and classes (Section 5.1); its per-class breakdown "
+        "is given in Section 7.4.")
     d.table(pd.read_csv(os.path.join(TABDIR, "r_t_full.csv")),
             "All fifteen policies across all seven scenarios. Rn: normalised resilience; "
             "migrations: proactive migrations per run; switch-overs: protection switch-overs "

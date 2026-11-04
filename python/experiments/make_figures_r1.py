@@ -118,6 +118,19 @@ def r_decomposition():
     _save(fig, "r01_decomposition.png")
 
 
+def pooled_recovery(sub, kind="failure"):
+    """Mean recovery per interruption, pooled over all runs (runs without an
+    interruption of that cause contribute nothing, not a zero)."""
+    if kind == "failure":
+        n, o = sub.failure_interruptions.sum(), sub.outage_slots_failure.sum()
+    elif kind == "migration":
+        n, o = sub.migration_interruptions.sum(), sub.outage_slots_migration.sum()
+    else:
+        n = sub.failure_interruptions.sum() + sub.migration_interruptions.sum()
+        o = sub.outage_slots_failure.sum() + sub.outage_slots_migration.sum()
+    return float(o / n) if n else float("nan")
+
+
 def r_main_tables():
     runs = _runs()
     order = ["static", "reactive", "protection", "proactive_threshold",
@@ -149,15 +162,20 @@ def r_main_tables():
                 continue
             row = {"scenario": SCEN[s], "policy": SHORT[pol]}
             for m in metrics:
-                row[m] = round(float(sub[m].mean()), 4 if ("avail" in m or "normal" in m
-                                                          or "sla" in m) else 2)
+                if m == "mean_recovery_steps":
+                    row[m] = round(pooled_recovery(sub, "all"), 2)
+                elif m == "mean_recovery_failure":
+                    row[m] = round(pooled_recovery(sub, "failure"), 2)
+                else:
+                    row[m] = round(float(sub[m].mean()), 4 if ("avail" in m or "normal" in m
+                                                              or "sla" in m) else 2)
             rows.append(row)
     df = pd.DataFrame(rows).rename(columns={
         "service_availability": "availability", "normalised_resilience": "Rn",
         "resilience_loss": "loss L", "mean_recovery_steps": "recovery, all",
         "mean_recovery_failure": "recovery, failure-induced", "sla_compliance": "SLA",
         "proactive_reroutes_total": "migrations", "protection_switches": "switch-overs"})
-    df.to_csv(os.path.join(TABDIR, "r_t_full.csv"), index=False)
+    df.fillna("–").to_csv(os.path.join(TABDIR, "r_t_full.csv"), index=False)
 
     # confirmatory family (pre-specified): P4 vs P1
     sig = pd.read_csv(os.path.join(RESULTS, "significance_tests.csv"))
@@ -206,12 +224,12 @@ def r_main_tables():
                     "protection_predictive"]:
             sub = runs[(runs.scenario == s) & (runs.policy == pol)]
             rows.append({"scenario": SCEN[s], "policy": SHORT[pol],
-                         "recovery, all [slots]": round(sub.mean_recovery_steps.mean(), 2),
+                         "recovery, all [slots]": round(pooled_recovery(sub, "all"), 2),
                          "failure-induced interruptions": round(sub.failure_interruptions.mean(), 1),
-                         "recovery, failure-induced [slots]": round(sub.mean_recovery_failure.mean(), 2),
+                         "recovery, failure-induced [slots]": round(pooled_recovery(sub, "failure"), 2),
                          "migration-induced interruptions": round(sub.migration_interruptions.mean(), 1),
-                         "recovery, migration-induced [slots]": round(sub.mean_recovery_migration.mean(), 2)})
-    pd.DataFrame(rows).to_csv(os.path.join(TABDIR, "r_t_recovery_split.csv"), index=False)
+                         "recovery, migration-induced [slots]": round(pooled_recovery(sub, "migration"), 2)})
+    pd.DataFrame(rows).fillna("–").to_csv(os.path.join(TABDIR, "r_t_recovery_split.csv"), index=False)
 
     # per-class SLA-compliant availability (R5.4)
     classes = ["command_control", "emergency_message", "medical_telemetry", "voice_call",

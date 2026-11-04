@@ -45,8 +45,10 @@ def load():
 def build_texts():
     r, RL, rel, pc, flows_equal = load()
     PR = r.groupby(["scenario", "policy"]).proactive_reroutes_total.mean()
-    REF = r.pivot_table(index="scenario", columns="policy", values="mean_recovery_failure")
-    REC = r.pivot_table(index="scenario", columns="policy", values="mean_recovery_steps")
+    _g = r.groupby(["scenario", "policy"])
+    REF = (_g.outage_slots_failure.sum() / _g.failure_interruptions.sum()).unstack()
+    REC = ((_g.outage_slots_failure.sum() + _g.outage_slots_migration.sum())
+           / (_g.failure_interruptions.sum() + _g.migration_interruptions.sum())).unstack()
     sig = pd.read_csv(os.path.join(RES, "significance_tests.csv"))
     conf = sig[sig.family == "confirmatory"]
     n_hs = int((conf.p_holm < 0.05).sum())
@@ -69,6 +71,9 @@ def build_texts():
 
     def msL(s, p):
         return ms[(ms.scenario == s) & (ms.policy == p)].resilience_loss.mean()
+
+    def msr(s, p):
+        return 100 * (msL(s, p) - msL(s, "reactive")) / msL(s, "reactive")
 
     def lgL(s, p):
         return lg[(lg.scenario == s) & (lg.policy == p)].resilience_loss.mean()
@@ -217,14 +222,14 @@ def build_texts():
         "abstract and at first introduction (Section 4.1), where we also state that the physical "
         "counterpart is itself a simulation, that the twin has not been synchronised with a "
         "deployed network and that no result should be read as validation on a real system. "
-        "Section 8.4 explains what distinguishes the construction from a simulator (see also R1.1).")
+        "Section 8.4 explains what distinguishes the construction from a simulator (see also our response to Reviewer 1, comment 1).")
     R["R4.2"] = ("Relationship between slot and real time.",
         "Added in Section 3.4 and the parameter tables: one slot corresponds to one second, the "
         "mapping that anchors the 15-slot reconfiguration grid of S5 and S7 to the 15 s Starlink "
         "schedule [52]. Hence D = 3 s, C_r = 4–12 s, C_m = 0–1 s and H = 10 s. We also state how "
         "interruptions are counted: an action taken in slot t with duration C interrupts the "
         "flow in slots t, …, t + C − 1, exactly C whole slots, so a switch-over costs zero or one "
-        "slot and no fractional interruption arises (see R3.8). The original text described "
+        "slot and no fractional interruption arises (see also our response to Reviewer 3, comment 8). The original text described "
         "C_m as U(0,1); the implementation draws an integer from {0, 1}, and the text now says so.")
     R["R4.3"] = ("Criterion for selecting the prediction model.",
         "Section 4.3 now states the criterion, fixed in advance and applied on validation data "
@@ -272,9 +277,11 @@ def build_texts():
         "We built a second, structurally different world — monotone gamma-process wear-out "
         "without mean reversion, observed through a four-slot lagged map with different "
         "exponents and doubled noise — and applied the frozen predictor and controllers to it "
-        f"(Section 7.8, {ref('structurally different world')}). The predictor's PR-AUC falls to "
-        f"{f_fr['pr_auc']:.3f} (lift {f_fr['lift']:.1f}) against {f_rt['pr_auc']:.3f} for the "
-        "same estimator retrained there; the closed-loop ordering is preserved (collapse: "
+        f"(Section 7.8, {ref('structurally different world')}). Frozen, the predictor reaches a "
+        f"PR-AUC of {f_fr['pr_auc']:.3f} (lift {f_fr['lift']:.1f}, against "
+        f"{mc.loc['logistic_regression', 'pr_auc'] / float(best['positive_rate_test']):.1f} in its "
+        f"training family) against {f_rt['pr_auc']:.3f} (lift {f_rt['lift']:.1f}) for the same "
+        "estimator retrained there, so it transfers only partially; the closed-loop ordering is preserved (collapse: "
         f"P1 {msL(S4, 'reactive'):.2f}, P1b {msL(S4, 'protection'):.2f}, "
         f"P4 {msL(S4, 'proactive_ai'):.2f}, P6 {msL(S4, 'protection_predictive'):.2f}). The "
         "paper now separates the two claims explicitly: the framework and the decomposition "
@@ -290,7 +297,7 @@ def build_texts():
         "class in its simplest, risk-free form. This "
         "baseline changed the conclusions. On the 64 confirmation seeds it reduces the loss "
         f"relative to P1 by {min(prot):.1f}–{max(prot):.1f}% in S3–S6, and predictive migration "
-        f"is not significantly different from it under collapse after Holm correction (P4 − P1b: {cfs(S4, 'proactive_ai', 'protection')}) "
+        f"is not significantly different from it under collapse after Holm correction (P4 − P1b: {cfs(S4, 'proactive_ai', 'protection')}; Holm p = {cf(S4, 'proactive_ai', 'protection', 'p_holm'):.3f}; the point estimate favours migration) "
         f"and worse under common-cause disruption ({cfs(S6, 'proactive_ai', 'protection')}). It "
         "also led to the new policy P6, which adds risk-driven primary-path choice and standby "
         "refresh to protection; P6 − P1b is the primary confirmatory hypothesis (Section 6.5) "
@@ -327,7 +334,12 @@ def build_texts():
         "degradation is gradual and the switch-over is cheap, and hardly at all through "
         "protection.")
     R["R1.6"] = ("Budget factors and weights 4, 3, 0.6: why these values? Sensitivity analysis.",
-        "Section 4.4 explains the normalisation argument used to fix them before the campaign, "
+        "Section 4.4 now states how both were fixed before the campaign and not tuned: the "
+        "weights of Eq. (7) and the coefficients of Eq. (11) by a normalisation argument (each "
+        "term contributes about one unit at a representative bad value), and the budget "
+        "ladder b_c by placing the criticality-4 class at the operating point, the most "
+        "critical class slightly below it and multiplying the required evidence by roughly "
+        "1.3–1.4 per step down in criticality. "
         f"and Section 7.10 ({ref('controller design choices')}) now reports a design "
         "sensitivity on 24 paired seeds, with the P1b reference and the paired P6 − P1b "
         "interval for every setting: four budget-factor profiles (flat, shallow, nominal, "
@@ -343,8 +355,8 @@ def build_texts():
         f"With the corrections, P4 is within noise of P1 in S7 ({rel(S7, 'proactive_ai'):+.1f}%, "
         f"interval [{pc(S7, 'proactive_ai', 'reactive')[1]:.2f}, "
         f"{pc(S7, 'proactive_ai', 'reactive')[2]:.2f}]), and its apparent recovery-time "
-        "advantage was a composition effect of short migration-induced interruptions (see "
-        "R5.4). The explanation (Section 7.8) follows from the decomposition: the dominant "
+        "advantage was a composition effect of short migration-induced interruptions (see also our response to "
+        "Reviewer 5, comment 4). The explanation (Section 7.8) follows from the decomposition: the dominant "
         "impairment in S7 is a short, scheduled reconfiguration without precursor; element "
         "failures are few, and although P4 anticipates about half of them it performs many "
         "more migrations than the calibrated perfect-state policy, most of which do not pay. "
@@ -356,7 +368,7 @@ def build_texts():
         f"{rel(S7, 'protection_predictive'):+.1f}%). We agree that the result limits the "
         "applicability of anticipatory migration, and the revised paper says so.")
 
-    R["R5.1"] = ("Inconsistent lead times in Table 16 (9.67, 10.67 for H = 3, 5).",
+    R["R5.1"] = ("Inconsistent lead times in original Table 16 (9.67, 10.67 for H = 3, 5).",
         "You are right; this was an error. The horizon sweep had been produced by an older "
         "lead-time tracker that matched each failure to the first threshold crossing without "
         "the horizon bound of the lead-time definition, and the table was not regenerated when "
@@ -364,12 +376,18 @@ def build_texts():
         "in the code and enforced by a unit test. Corrected median lead times range "
         f"{hs.cl_lead_time_median.min():.1f}–{hs.cl_lead_time_median.max():.1f} slots, never "
         f"above H ({ref('Prediction-horizon sweep')}, {ref('Effect of the prediction horizon')}). "
-        "The conclusions that relied on this column were re-derived (see R3.2).")
+        "The conclusions that relied on this column were re-derived: on 12 seeds of the "
+        f"collapse scenario the loss of P4 is lowest at H = {int(hs.loc[hs.cl_resilience_loss.idxmin(), 'horizon'])} "
+        f"({hs.cl_resilience_loss.min():.2f}) and rises to {hs.cl_resilience_loss.max():.2f} at "
+        f"longer horizons, against {hz_ref:.2f} for P1, without a significant difference between "
+        "horizons; predictive protection is insensitive to H. The recommendation to keep the "
+        "horizon short is retained for migration-based control, now with the corrected reason "
+        "that longer horizons add migrations on elements that do not fail soon.")
     R["R5.2"] = ("Isolate predictive information from service differentiation; direct P3–P4 comparisons.",
         "The revised design makes both factors explicit (Section 6.3): P3 and P4 share "
         "budgets, the criticality term and criticality-ordered processing; uniform variants P3u "
         "and P4u remove all three. Direct paired P3–P4 contrasts are in "
-        f"{ref('Exploratory paired contrasts')} for every scenario and the 2 × 2 analysis is in "
+        f"{ref('Exploratory paired contrasts')} for S3–S7 and the 2 × 2 analysis is in "
         "Section 7.7; the uniform-variant contrasts (P4u − P3u, P3 − P3u, P4 − P4u) are also "
         "rows of that table. The comparison confirms your concern: under collapse prediction is ahead "
         f"of the index with differentiation ({d43[0]:+.2f} [{d43[1]:.2f}, {d43[2]:.2f}]) but "
@@ -407,21 +425,33 @@ def build_texts():
 
     R["R3.1"] = ("Predictive performance derived from the same synthetic latent-health model; "
                  "distinguish framework and predictor validation; independently generated degradation.",
-        "See R1.3. We implemented an independently structured degradation world (gamma "
-        "wear-out, lagged misspecified observation map) and report both offline transfer and "
-        "the closed-loop consequence (Section 7.8). The manuscript now distinguishes explicitly "
+        "We implemented an independently structured degradation world: monotone gamma-process "
+        "wear-out without mean reversion, observed through a four-slot lagged observation map "
+        "with different exponents and doubled noise (Section 7.8). Failure is again a "
+        "threshold crossing of latent health, so this is a misspecification test and not a "
+        "trace-driven one. Frozen and transferred, the predictor reaches a PR-AUC of "
+        f"{f_fr['pr_auc']:.3f} against {f_rt['pr_auc']:.3f} when retrained in the new world; in "
+        f"closed loop under collapse P6 changes the loss by {msr(S4, 'protection_predictive'):+.1f}%, "
+        f"P4 by {msr(S4, 'proactive_ai'):+.1f}% and P1b by {msr(S4, 'protection'):+.1f}% relative to "
+        f"P1 ({ref('structurally different world')}). The manuscript now distinguishes explicitly "
         "between validation of the framework and decomposition (which transfer between the two "
         "families) and of the predictor (valid only within its training family), in Section "
         "7.8, Limitation 2 and the conclusion. A trace-driven evaluation remains future work; we "
         "did not have access to operational failure traces.")
-    R["R3.2"] = ("Table 16 inconsistency with Eq. (18).",
-        "See R5.1 — corrected, with the cause explained. The re-derived sweep shows that the "
+    R["R3.2"] = ("Original Table 16 inconsistency with Eq. (18).",
+        "You are right, and this was an error. The horizon sweep had been produced by an older "
+        "lead-time tracker that matched each failure to the first threshold crossing without the "
+        "horizon bound of the lead-time definition (Eq. (18) of the original manuscript, Eq. (17) "
+        "of the revision), and the table was not regenerated when the tracker was "
+        "replaced. The sweep now passes H to the tracker, the bound T_lead ≤ H is asserted in the "
+        "code and enforced by a unit test, and every horizon is retrained on relabelled data. The re-derived sweep shows that the "
         f"loss of P4 is lowest, on 12 seeds and without a significant difference, at a short horizon (H = {int(hs.loc[hs.cl_resilience_loss.idxmin(), 'horizon'])}, "
         f"{hs.cl_resilience_loss.min():.2f}) and rises to {hs.cl_resilience_loss.max():.2f} at "
         f"longer ones, against {hz_ref:.2f} for P1, because longer horizons trigger more "
         "migrations on elements that do not fail soon; P6 is insensitive to H. The "
         "recommendation to keep the horizon short is therefore retained for migration-based "
-        "control, with the corrected reason (Section 7.10).")
+        f"control, with the corrected reason (Section 7.10, {ref('Prediction-horizon sweep')}, "
+        f"{ref('Effect of the prediction horizon')}).")
     R["R3.3"] = ("Different flow counts between policies; common random numbers.",
         "Thank you — this identified a genuine defect. Traffic, environment and controller "
         "shared one RNG, so policies consuming different numbers of draws saw different "
@@ -480,7 +510,7 @@ def build_texts():
         "stated to be a heuristic, the thresholds are not derived from Eq. (12), F1 contains no "
         "costs and R_inf is a proxy. Cost-derived actuation is named as future work.")
     R["R3.8"] = ("Physical meaning of a slot; fractional C_m.",
-        "See R4.2. One slot = 1 s; C_m is an integer in {0, 1} (the original text said U(0,1), "
+        "One slot = 1 s, stated in Section 3.4 and the parameter tables (see also our response to Reviewer 4, comment 2); C_m is an integer in {0, 1} (the original text said U(0,1), "
         "which was wrong); an action of duration C interrupts exactly C whole slots, on the "
         "same grid for availability, recovery and Kaplan–Meier, so no fractional interruption "
         "arises and a zero-cost switch-over interrupts nothing (Section 3.4; a unit test checks "
@@ -504,13 +534,18 @@ def build_texts():
     R["R3.11"] = ("Criticality-weighted result is exploratory.",
         "The class-weighted aggregates are no longer used for any conclusion (Section 5.2); "
         "per-class availability and SLA-compliant availability are reported instead "
-        f"({ref('SLA-compliant availability (SLA-A) per service class')}). The corrected design "
-        "did not reproduce the weighted-loss advantage, and the claim has been removed from "
-        "the abstract and conclusions.")
+        f"({ref('SLA-compliant availability (SLA-A) per service class')}). The weighted-loss "
+        "claim has been removed from the abstract and conclusions.")
     R["R3.12"] = ("S7 is externally parameterised stress testing, not validation.",
         "Agreed; this wording is used throughout (Sections 6.2, 7.8). S7 is outside every "
-        "inferential family and is discussed as the scenario where there is least to "
-        "anticipate.")
+        "inferential family. Following your suggestion, the result is now given prominence: "
+        "the abstract and the conclusion state that in this externally parameterised stress "
+        f"test predictive migration was within noise of reactive restoration "
+        f"({rel(S7, 'proactive_ai'):+.1f}%) while protection kept a "
+        f"{-rel(S7, 'protection'):.0f}% reduction, Section 7.8 explains why (failures are few, "
+        "the dominant impairment is a scheduled reconfiguration without precursor, and P4 "
+        "performs many more migrations than the calibrated perfect-state policy), and Section "
+        "8.3 names it as a condition under which anticipation does not pay.")
 
     return summary, R, dict(n_hs=n_hs)
 
@@ -548,6 +583,61 @@ def write_response(out_dir):
         md.append(f"**Comment {key.split('.')[1]}.** *{q}*\n\nResponse. {a}\n")
     doc.save(os.path.join(out_dir, "Response_to_Reviewers.docx"))
     open(os.path.join(out_dir, "Response_to_Reviewers.md"), "w").write("\n".join(md))
+
+
+BOX_INTRO = {
+    "R4": "We thank the reviewer for the positive assessment and the precise suggestions on "
+          "terminology and experimental description. All four have been implemented. The full "
+          "response letter (uploaded as a separate file) begins with a summary of the revision; "
+          "in brief, the reviewers' comments prompted an end-to-end implementation audit, the "
+          "corrected implementation changed the quantitative interpretation, and the revised "
+          "central comparisons were confirmed on 64 previously unused seeds under a frozen "
+          "protocol. Section, table and figure numbers refer to the revised manuscript.",
+    "R1": "We thank the reviewer for these comments, which led to substantial changes: a "
+          "protection baseline, a 98-element topology, a structurally different degradation "
+          "world and a decomposition of where the resilience gain comes from. The full response "
+          "letter (uploaded as a separate file) begins with a summary of the revision, including "
+          "the implementation audit and the frozen confirmation experiment on 64 previously "
+          "unused seeds. Section, table and figure numbers refer to the revised manuscript.",
+    "R5": "We thank the reviewer for identifying the lead-time inconsistency and the "
+          "confounds in the ablations; each point has been corrected in the implementation "
+          "and the text. The full response letter (uploaded as a separate file) begins with a "
+          "summary of the revision, including the implementation audit and the frozen "
+          "confirmation experiment on 64 previously unused seeds. Section, table and figure "
+          "numbers refer to the revised manuscript.",
+    "R3": "We thank the reviewer for an exceptionally careful report. Comments 2 and 3 "
+          "identified genuine defects in the implementation, and addressing them led us to "
+          "audit the code end to end. The audit found further issues, all corrected and "
+          "covered by unit tests, and the corrected results changed the quantitative "
+          "interpretation of the paper. Because the protection-based policies were introduced "
+          "during the revision, the central comparisons were re-tested on 64 previously unused "
+          "seeds under a protocol committed before the run (tag r1b-freeze in the public "
+          "repository). The full response letter (uploaded as a separate file) begins with a "
+          "summary of all changes. Section, table and figure numbers refer to the revised "
+          "manuscript.",
+}
+
+
+def write_boxes(out_dir):
+    """Plain-text replies for the Editorial Manager 'Reply to comment' box, one per reviewer.
+    The per-comment answers are identical to the response letter."""
+    _, R, _ = build_texts()
+    parts, plain = [], {}
+    for rv in ("R4", "R1", "R5", "R3"):
+        keys = [k for k in REVIEW_ORDER if k.startswith(rv + ".")]
+        lines = [BOX_INTRO[rv], ""]
+        for k in keys:
+            q, a = R[k]
+            lines.append(f"Comment {k.split('.')[1]} ({q.rstrip('.')}).")
+            lines.append(f"Response: {a}")
+            lines.append("")
+        txt = "\n".join(lines).strip() + "\n"
+        plain[rv] = txt
+        open(os.path.join(out_dir, f"EM_box_{REVIEWER_TITLE[rv].replace(' ', '_')}.txt"),
+             "w").write(txt)
+        parts.append(f"=== {REVIEWER_TITLE[rv]} ({len(txt):,} characters) ===\n\n{txt}")
+    open(os.path.join(out_dir, "EM_reply_boxes_all.txt"), "w").write("\n\n".join(parts))
+    return plain
 
 
 def _conf():
@@ -617,7 +707,7 @@ def write_cover(out_dir):
         "readers, and the response letter documents every change point by point.",
         "The revised manuscript has not been submitted elsewhere. The updated code, the frozen "
         "protocol and the result files are provided as supplementary material and are "
-        "archived as release v1.1-R1 of the Zenodo record (concept DOI 10.5281/zenodo.22084965).",
+        "archived on Zenodo as release v1.1-R1 (doi:10.5281/zenodo.23957597).",
         "Yours sincerely,",
         "Nikita Tarasov (corresponding author) and Roman Zinko",
         "Lviv Polytechnic National University",
@@ -654,6 +744,7 @@ def main():
     CAPTIONS = a.captions
     os.makedirs(a.out, exist_ok=True)
     write_response(a.out)
+    write_boxes(a.out)
     write_cover(a.out)
     print("written to", a.out)
 
