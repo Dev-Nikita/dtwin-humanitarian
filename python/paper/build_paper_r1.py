@@ -1536,7 +1536,9 @@ def build(out_path: str) -> None:
                      "Family A, retained from the original study for continuity: P4 against "
                      "reactive restoration P1 on the four primary measures in the five stressed "
                      "scenarios (twenty tests, paired t-test, Holm-corrected), development "
-                     "campaign.", fmt="{}", size=7.0)
+                     "campaign. Mean recovery here is the per-run mean, with 0 for a run without "
+                     "interruption, as required for the paired test; Section 7.4 gives pooled "
+                     "recovery times.", fmt="{}", size=7.0)
     n_conf = int((R["sig"]["family"] == "confirmatory").sum())
     conf = R["sig"][R["sig"]["family"] == "confirmatory"]
     n_hs = int((conf["p_holm"] < 0.05).sum())
@@ -1557,8 +1559,8 @@ def build(out_path: str) -> None:
                       "development campaign (24 seeds; uncorrected Wilcoxon signed-rank p). "
                       "Negative differences favour the first-named policy.", fmt="{}", size=6.3)
     d.p(
-        f"{t_contr} lists the paired contrasts that isolate each mechanism in S3–S7 "
-        "scenario. They are exploratory and are reported with intervals, not as tests."
+        f"{t_contr} lists the paired contrasts that isolate each mechanism in "
+        "scenarios S3–S7. They are exploratory and are reported with intervals, not as tests."
     )
 
     # ------------------------------------------------------- 7.3 confirmation
@@ -2061,7 +2063,7 @@ def build(out_path: str) -> None:
         f"({rel_(S7, 'protection', 'reactive'):+.1f}% and "
         f"{rel_(S7, 'protection_predictive', 'reactive'):+.1f}%). The recovery-time advantage that "
         "P4 shows in S7 when all interruptions are averaged is again a composition effect: "
-        f"its failure-induced recovery is {R['REF'].loc[S7, 'proactive_ai']:.2f} slots against "
+        f"its recovery from actual failures is not faster but slower, {R['REF'].loc[S7, 'proactive_ai']:.2f} slots against "
         f"{R['REF'].loc[S7, 'reactive']:.2f} for P1 and {R['REF'].loc[S7, 'protection']:.2f} for "
         "P1b (Appendix A)."
     )
