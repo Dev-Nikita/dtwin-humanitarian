@@ -735,8 +735,9 @@ def write_cover(out_dir):
         "The revised manuscript has not been submitted elsewhere. The updated code, the frozen "
         "protocol and the result files are provided as supplementary material and are "
         "archived on Zenodo (concept doi:10.5281/zenodo.22084965; release v1.2-R1 matches this "
-        "manuscript, and the reported results were produced with release v1.1-R1, "
-        "doi:10.5281/zenodo.23957597; the simulation code and result files are identical in both).",
+        "manuscript; the raw simulation results were produced with release v1.1-R1, "
+        "doi:10.5281/zenodo.23957597, and the simulation code and raw result files are identical "
+        "in both).",
         "Yours sincerely,",
         "Nikita Tarasov (corresponding author) and Roman Zinko",
         "Lviv Polytechnic National University",

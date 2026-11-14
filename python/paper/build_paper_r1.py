@@ -367,7 +367,7 @@ REFERENCES: List[str] = [
     "J. D. Hunter, “Matplotlib: a 2D graphics environment,” Computing in Science & Engineering, vol. 9, no. 3, pp. 90–95, 2007.",
     "R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction, 2nd ed. MIT Press, 2018.",
     "N. C. Luong et al., “Applications of deep reinforcement learning in communications and networking: a survey,” IEEE Communications Surveys & Tutorials, vol. 21, no. 4, pp. 3133–3174, 2019.",
-    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, concept doi:10.5281/zenodo.22084965 (all versions; release v1.2-R1 matches this manuscript, and the reported results were produced with release v1.1-R1, doi:10.5281/zenodo.23957597).",
+    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, concept doi:10.5281/zenodo.22084965 (all versions; release v1.2-R1 matches this manuscript; the raw simulation results were produced with release v1.1-R1, doi:10.5281/zenodo.23957597).",
     "P. Pan, G. Swallow, and A. Atlas, \u201cFast reroute extensions to RSVP-TE for LSP tunnels,\u201d IETF RFC 4090, 2005, doi:10.17487/RFC4090.",
     "A. M. Law, Simulation Modeling and Analysis, 5th ed. McGraw-Hill, 2015.",
     "C. Westphal, L. Han, and R. Li, “LEO satellite networking relaunched: survey and current research challenges,” ITU Journal on Future and Evolving Technologies, vol. 4, no. 4, pp. 711–736, 2023.",
@@ -2602,9 +2602,10 @@ def build(out_path: str) -> None:
         "tables from which every figure and table in this manuscript is generated, is archived on "
         "Zenodo [78]. The development version is maintained on GitHub at "
         "https://github.com/Dev-Nikita/dtwin-humanitarian. Release v1.2-R1 differs from v1.1-R1 "
-        "only in the manuscript-generation scripts and an additional unit test; the simulation "
-        "code and all result files are identical, so every reported number is reproducible from "
-        "either release. A snapshot of the "
+        "in the table, figure and manuscript generation scripts (recovery times are pooled over "
+        "runs, which changes two derived tables) and in an additional unit test; the simulation "
+        "code and the raw result files are identical, so the experiments need not be re-run. A "
+        "snapshot of the "
         "same reproducibility package is provided as supplementary material with this submission. "
         "It includes the frozen confirmation protocol, its analysis script, the commit "
         "identifier of the code freeze and the confirmation results. "
