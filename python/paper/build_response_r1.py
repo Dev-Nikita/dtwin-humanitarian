@@ -697,7 +697,12 @@ def write_cover(out_dir):
         "We submit the revised version of our manuscript, now titled 'Where Does Predictive "
         "Resilience Come From? A Simulation-Based Digital-Twin Assessment of Failure "
         "Anticipation, Protection and Risk-Aware Recovery in Hybrid 5G/6G-Class and LEO "
-        "Satellite Networks'.",
+        "Satellite Networks'. The title was changed because the revised study no longer "
+        "claims a performance gain for one predictive policy; it asks which mechanism the "
+        "gain comes from, as Reviewers 1 and 3 suggested. The original title was: 'Predictive "
+        "Resilience of Hybrid 5G/6G-Class and LEO Satellite Networks: A Digital-Twin Framework "
+        "for Failure Anticipation and Risk-Aware Recovery'. The research object, authors and "
+        "data are unchanged.",
         "The reviewers' comments prompted an end-to-end implementation audit. The audit "
         "identified three issues that materially affected the original quantitative "
         "interpretation — the paired design was not correctly paired, one table used an "
@@ -722,7 +727,8 @@ def write_cover(out_dir):
         "can be competitive with protection where degradation is gradual, while under "
         "common-cause disruption its gain is almost entirely a bypass of the detection delay. We believe this controlled "
         "decomposition, with a confirmation protocol committed before any confirmation run, is a more useful and more reliable contribution for RESS "
-        "readers, and the response letter documents every change point by point.",
+        "readers. The response letter documents every change point by point, and a revision "
+        "change map links each comment to the revised sections, tables and figures.",
         "The revised manuscript has not been submitted elsewhere. The updated code, the frozen "
         "protocol and the result files are provided as supplementary material and are "
         "archived on Zenodo as release v1.1-R1 (doi:10.5281/zenodo.23957597).",
