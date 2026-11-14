@@ -115,3 +115,14 @@ assumptions, and the predictor is validated only within the family it was traine
 ## 7. Licence and citation
 
 Released for academic use. Please cite the accompanying paper.
+
+## 8. Releases
+
+| Tag | Content |
+|---|---|
+| `0.1` | Original submission (August 2026) |
+| `r1b-freeze` | Code freeze before the confirmation runs (`5dbaeaf`) |
+| `v1.1-R1` | Revision R1; all reported results were produced with this release (doi:10.5281/zenodo.23957597) |
+| `v1.2-R1` | Same simulation code and result files as `v1.1-R1`; corrected manuscript text generators, LaTeX font handling and a topology manifest test. Matches the submitted revision |
+
+All versions: concept doi:10.5281/zenodo.22084965.

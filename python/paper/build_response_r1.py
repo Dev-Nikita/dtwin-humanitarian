@@ -518,8 +518,9 @@ def build_texts():
         f"{RL.loc[S4, 'proactive_ai']:.2f} for P4 and {RL.loc[S4, 'protection']:.2f} for P1b — "
         "the lowest of all policies there in the development campaign at the nominal settings (exploratory); under common-cause disruption it stays behind "
         f"protection ({RL.loc[S6, 'oracle_calibrated']:.2f} against {RL.loc[S6, 'protection']:.2f}). "
-        "The gap between P4 and P5c is the headroom a better forecaster could exploit in the "
-        "migration role. The statement that perfect state knowledge leads to excessive "
+        "The gap between P4 and P5c is an exploratory indication of the potential value of "
+        "improved risk information under privileged-state access in the migration role, not a "
+        "measured achievable bound. The statement that perfect state knowledge leads to excessive "
         "actuation has been removed; it applied only to the uncalibrated map.")
     R["R3.7"] = ("Eq. (12) presented too strongly.",
         "Section 4.5 is rewritten as 'An ex-post economic reading of the budget': the rule is "
@@ -542,9 +543,11 @@ def build_texts():
         "resubmission.")
     R["R3.10"] = ("State the incremental value of prediction more narrowly.",
         "Fully agreed. The paper is now framed as a decomposition: protection is the most "
-        "consistent source of gain; risk-informed protection adds a small confirmed "
-        "improvement, which an exploratory ablation attributes almost entirely to standby-path "
-        "selection and for which a simple index suffices; and pre-emptive migration on "
+        "consistent source of gain; risk-informed protection with dynamic standby refresh adds a "
+        "small confirmed improvement over static protection, which an exploratory ablation "
+        "attributes almost entirely to standby-path selection; in that role the learned "
+        "predictor adds no confirmed practical gain over a simple degradation index (equivalence "
+        "shown under collapse and common-cause disruption); and pre-emptive migration on "
         "predicted risk is most favourable where degradation is gradual and the switch-over is "
         "inexpensive, with a longer detection delay substantially amplifying its benefit. "
         "The abstract and conclusion state these findings with the qualifier 'in the "
@@ -717,8 +720,8 @@ def write_cover(out_dir):
         "the code and wrote a confirmation protocol with fixed hypotheses, multiplicity "
         "corrections and equivalence margins before running 64 previously unused seeds. In the "
         f"evaluated systems, plain protection reduces resilience loss by {min(prot):.1f}–"
-        f"{max(prot):.1f}% relative to reactive restoration; risk-informed protection "
-        f"adds a confirmed {-cf(S4, 'protection_predictive', 'protection'):.1f}% under "
+        f"{max(prot):.1f}% relative to reactive restoration; risk-informed protection with "
+        f"dynamic standby refresh adds, over static protection, a confirmed {-cf(S4, 'protection_predictive', 'protection'):.1f}% under "
         f"infrastructure collapse and {-cf(S6, 'protection_predictive', 'protection'):.1f}% "
         "under common-cause disruption, which a subsequent exploratory ablation attributes "
         "almost entirely to risk-aware standby-path selection, with a simple degradation index "
@@ -731,7 +734,9 @@ def write_cover(out_dir):
         "change map links each comment to the revised sections, tables and figures.",
         "The revised manuscript has not been submitted elsewhere. The updated code, the frozen "
         "protocol and the result files are provided as supplementary material and are "
-        "archived on Zenodo as release v1.1-R1 (doi:10.5281/zenodo.23957597).",
+        "archived on Zenodo (concept doi:10.5281/zenodo.22084965; release v1.2-R1 matches this "
+        "manuscript, and the reported results were produced with release v1.1-R1, "
+        "doi:10.5281/zenodo.23957597; the simulation code and result files are identical in both).",
         "Yours sincerely,",
         "Nikita Tarasov (corresponding author) and Roman Zinko",
         "Lviv Polytechnic National University",
@@ -744,7 +749,7 @@ def write_cover(out_dir):
 
     hl = [
         f"Plain 1:1 protection cuts resilience loss by {min(prot):.1f}-{max(prot):.1f}% vs reactive restoration",
-        f"Risk-informed protection adds a confirmed {-cf(S4, 'protection_predictive', 'protection'):.1f}% and {-cf(S6, 'protection_predictive', 'protection'):.1f}% on independent seeds",
+        f"Risk-informed standby refresh beats static protection by {-cf(S4, 'protection_predictive', 'protection'):.1f}% and {-cf(S6, 'protection_predictive', 'protection'):.1f}% (confirmed)",
         "Exploratory ablation attributes this gain mainly to standby-path selection",
         "A degradation index matches the learned predictor for standby selection (S4, S6)",
         "Migration gain under common-cause shocks is mostly a detection-delay bypass",

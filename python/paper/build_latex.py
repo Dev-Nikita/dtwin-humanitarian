@@ -142,7 +142,7 @@ SPECIAL = {
 
 
 def cite(text: str) -> str:
-    """Turn the numeric citations of the Word version into \cite commands."""
+    """Turn the numeric citations of the Word version into \\cite commands."""
     text = re.sub(r"\[(\d+)\](?:,\s*\[(\d+)\])*", _cite_group, text)
     return text
 
@@ -424,9 +424,17 @@ PREAMBLE = r"""%% Elsevier CAS template (els-cas-templates), double-column artic
 %% tables need the full text block.
 \documentclass[a4paper,fleqn]{cas-sc}
 
-\usepackage{lmodern}
+% cas-sc loads STIX fonts when they are installed (as on Editorial Manager and full
+% TeX Live) and Computer Modern otherwise. Latin Modern and amssymb are loaded only in
+% the second case, because mixing them with STIX remaps math symbols (\pm prints as a comma).
+\makeatletter
+\@ifpackageloaded{stix}{%
+  \renewcommand{\sfdefault}{lmss}\renewcommand{\ttdefault}{lmtt}%
+}{\usepackage{lmodern}}
+\makeatother
 \usepackage[numbers,sort&compress]{natbib}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath}
+\makeatletter\@ifpackageloaded{stix}{}{\usepackage{amssymb}}\makeatother
 \usepackage{booktabs}
 \usepackage{array}
 \usepackage{longtable}

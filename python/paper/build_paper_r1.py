@@ -367,7 +367,7 @@ REFERENCES: List[str] = [
     "J. D. Hunter, “Matplotlib: a 2D graphics environment,” Computing in Science & Engineering, vol. 9, no. 3, pp. 90–95, 2007.",
     "R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction, 2nd ed. MIT Press, 2018.",
     "N. C. Luong et al., “Applications of deep reinforcement learning in communications and networking: a survey,” IEEE Communications Surveys & Tutorials, vol. 21, no. 4, pp. 3133–3174, 2019.",
-    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, version v1.1-R1, doi:10.5281/zenodo.23957597.",
+    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, concept doi:10.5281/zenodo.22084965 (all versions; release v1.2-R1 matches this manuscript, and the reported results were produced with release v1.1-R1, doi:10.5281/zenodo.23957597).",
     "P. Pan, G. Swallow, and A. Atlas, \u201cFast reroute extensions to RSVP-TE for LSP tunnels,\u201d IETF RFC 4090, 2005, doi:10.17487/RFC4090.",
     "A. M. Law, Simulation Modeling and Analysis, 5th ed. McGraw-Hill, 2015.",
     "C. Westphal, L. Han, and R. Li, “LEO satellite networking relaunched: survey and current research challenges,” ITU Journal on Future and Evolving Technologies, vol. 4, no. 4, pp. 711–736, 2023.",
@@ -572,25 +572,32 @@ def build(out_path: str) -> None:
         "validation-only matching of baseline operating points, and an interruption accounting "
         "that separates failure-induced from migration-induced interruptions and charges "
         "restoration cost for migrations off dead paths.",
-        "A controlled decomposition over fifteen policies that vary one mechanism at a time "
-        "(risk source, criticality differentiation or restoration mechanism), including a "
+        "A controlled decomposition over fifteen policies that, where the design allows, vary "
+        "one mechanism at a time (risk source, criticality differentiation or restoration "
+        "mechanism), including a "
         "predictive-protection policy that spends the risk estimate only on decisions that "
-        "interrupt no traffic, and a Monte-Carlo-calibrated privileged-state reference.",
+        "interrupt no traffic, and a Monte-Carlo-calibrated privileged-state reference. In that "
+        "policy the use of risk information and the dynamic refresh of the standby path enter "
+        "together; they are separated only by exploratory ablations.",
         "Evidence from the evaluated systems, with the central comparisons confirmed on "
         "independent seeds under a frozen protocol, that protection is the most consistent "
         "source of gain, "
-        "that risk-informed protection adds a small confirmed improvement, which an exploratory "
-        "decomposition attributes almost entirely to standby-path selection and for which a "
-        "simple degradation index suffices, and that the benefit of pre-emptive migration is "
+        "that risk-informed protection with dynamic standby refresh adds a small confirmed "
+        "improvement over static protection, which an exploratory decomposition attributes "
+        "almost entirely to standby-path selection and in which a simple degradation index is "
+        "equivalent to the learned predictor (collapse and common-cause scenarios), and that the benefit of pre-emptive migration is "
         "partly a detection-delay effect and depends on gradual degradation and a nearly free "
         "switch-over.",
     ], prefix="C{i}.")
     d.p(
         "Taken together, the novelty is methodological rather than algorithmic: none of the "
         "individual policies is new, but a mechanism-identifiable closed-loop evaluation of "
-        "risk-informed recovery, in which each source of gain can be switched off separately "
-        "and compared with conventional protection on common random numbers, has, to our "
-        "knowledge, not been reported for hybrid terrestrial–satellite networks."
+        "risk-informed recovery, in which the main sources of gain are compared with conventional "
+        "protection on common random numbers and separated as far as the policy design allows, "
+        "has, to our knowledge, not been reported for hybrid terrestrial–satellite networks. The "
+        "separation is not complete: risk-informed protection differs from static protection "
+        "both in the risk information it uses and in refreshing its standby path, and the "
+        "learned predictor adds no confirmed practical gain over a degradation index in that role."
     )
     d.p(
         "The evaluation uses a humanitarian and emergency-response deployment as its case study, "
@@ -2377,8 +2384,9 @@ def build(out_path: str) -> None:
         "restoration, is an example. And the graph must offer "
         "alternatives to move to: on the 98-element topology, with three orbital planes, "
         "predictive migration had the lowest loss under collapse. The gap "
-        "between the learned predictor and perfect state in the migration role is the "
-        "headroom a better forecaster could exploit; in the standby role there is almost none. "
+        "between the learned predictor and perfect state in the migration role is an exploratory "
+        "indication of the potential value of improved risk information under privileged-state "
+        "access, not a measured achievable bound; in the standby role the gap is almost nil. "
         "An operator should establish detection latency, switch-over cost, the availability "
         "of disjoint standby capacity and the share of failures with an observable precursor "
         "before investing in anticipation instead of protection, and should use a simple "
@@ -2593,7 +2601,10 @@ def build(out_path: str) -> None:
         "control-plane services and deployment manifests), together with the processed result "
         "tables from which every figure and table in this manuscript is generated, is archived on "
         "Zenodo [78]. The development version is maintained on GitHub at "
-        "https://github.com/Dev-Nikita/dtwin-humanitarian. A snapshot of the "
+        "https://github.com/Dev-Nikita/dtwin-humanitarian. Release v1.2-R1 differs from v1.1-R1 "
+        "only in the manuscript-generation scripts and an additional unit test; the simulation "
+        "code and all result files are identical, so every reported number is reproducible from "
+        "either release. A snapshot of the "
         "same reproducibility package is provided as supplementary material with this submission. "
         "It includes the frozen confirmation protocol, its analysis script, the commit "
         "identifier of the code freeze and the confirmation results. "
