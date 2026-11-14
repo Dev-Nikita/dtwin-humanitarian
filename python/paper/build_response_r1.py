@@ -232,14 +232,16 @@ def build_texts():
         "slot and no fractional interruption arises (see also our response to Reviewer 3, comment 8). The original text described "
         "C_m as U(0,1); the implementation draws an integer from {0, 1}, and the text now says so.")
     R["R4.3"] = ("Criterion for selecting the prediction model.",
-        "Section 4.3 now states the criterion, fixed in advance and applied on validation data "
-        "only: highest validation PR-AUC (the positive class is rare); models within 0.01 are "
+        "Section 4.3 now states the criterion, adopted for this revision and applied without "
+        "using test labels: highest validation PR-AUC (the positive class is rare); models within 0.01 are "
         "tied and the tie is broken by validation Brier score (the controller consumes "
         f"probabilities) and then by inference cost. {ref('Anticipation performance on episode-disjoint')} "
         "now shows the validation columns. Logistic regression has the highest validation "
         f"PR-AUC ({mc.loc['logistic_regression', 'val_pr_auc']:.3f}); no other model is within "
-        "the tolerance. The code was changed accordingly — the original version selected by "
-        "test PR-AUC, which we should not have done.")
+        "the tolerance, so the tie-break was not invoked. The validation fold is also used for "
+        "calibration and for the threshold, so validation scores are optimistic and Section 4.3 "
+        "says so. The code was changed accordingly — the original version selected by test "
+        "PR-AUC, which we should not have done.")
     R["R4.4"] = ("Distinguish the exploratory nature of S7.",
         "Done. S7 is described as an externally parameterised stress test, not an external "
         "validation, in Sections 6.2 and 7.8, and Section 6.2 uses your wording 'exploratory, "
@@ -258,9 +260,11 @@ def build_texts():
         "knows what the twin does not. We use 'simulation-based digital twin' throughout and do "
         "not claim synchronisation with a real network.")
     R["R1.2"] = ("19 nodes are insufficient for satellite networks.",
-        "We added a 98-element topology with three LEO orbital planes of twelve satellites, "
-        "intra- and inter-plane links, sixteen ground gateways and a doubled terrestrial "
-        f"segment (Sections 6.2 and 7.8, {ref('98-element topology with three LEO planes')}). "
+        "We added a 98-element topology with 233 undirected links: three LEO orbital planes of "
+        "eight satellites (24) with intra-plane ring and inter-plane links, two core sites that "
+        "also act as feeder gateways, and eight terrestrial regions with 6G-class, 5G and LTE "
+        "cells, a UAV relay, an edge node and three user terminals each "
+        f"(Sections 6.2 and 7.8, {ref('98-element topology with three LEO planes')}). "
         "With the predictor and all operating points frozen from the reference network, the "
         f"losses under collapse are P1 {lgL(S4, 'reactive'):.2f}, P1b {lgL(S4, 'protection'):.2f}, "
         f"P6 {lgL(S4, 'protection_predictive'):.2f} and P4 {lgL(S4, 'proactive_ai'):.2f}, and "
@@ -274,10 +278,12 @@ def build_texts():
         "constellation.")
     R["R1.3"] = ("The predictor mainly learns the degradation patterns predefined by the authors.",
         "We agree, and the revision treats this as a central limitation rather than a detail. "
-        "We built a second, structurally different world — monotone gamma-process wear-out "
+        "We built a second world that changes the health-evolution process and the telemetry "
+        "observation map, while retaining the common failure threshold, service model and some "
+        "disturbance mechanisms — monotone gamma-process wear-out "
         "without mean reversion, observed through a four-slot lagged map with different "
         "exponents and doubled noise — and applied the frozen predictor and controllers to it "
-        f"(Section 7.8, {ref('structurally different world')}). Frozen, the predictor reaches a "
+        f"(Section 7.8, {ref('alternative degradation world')}). Frozen, the predictor reaches a "
         f"PR-AUC of {f_fr['pr_auc']:.3f} (lift {f_fr['lift']:.1f}, against "
         f"{mc.loc['logistic_regression', 'pr_auc'] / float(best['positive_rate_test']):.1f} in its "
         f"training family) against {f_rt['pr_auc']:.3f} (lift {f_rt['lift']:.1f}) for the same "
@@ -308,7 +314,15 @@ def build_texts():
         "ignored; the P6 − P1b interval excludes zero under all three capacity models. An "
         f"exploratory ablation on the confirmation seeds ({ref('Exploratory decomposition of predictive protection')}) "
         "shows that the effect comes almost entirely from the risk-aware choice of the "
-        "standby path, not from the choice of the primary path.")
+        "standby path, not from the choice of the primary path. Two caveats are stated in the "
+        "paper. First, P6 differs from P1b not only in which standby path it picks but also in "
+        "re-computing it during the run (risk-driven refresh), whereas P1b keeps the standby "
+        "path fixed between failures; the comparison is therefore 'risk-informed, refreshed "
+        "protection' against 'static protection', and a P1b variant with risk-free periodic "
+        "refresh is not included. Second, the confidence intervals quoted here and in the "
+        "confirmation table are per-contrast and unadjusted, while significance decisions use "
+        "Holm-adjusted p-values; this is why the P4 − P1b interval under collapse excludes "
+        "zero while the Holm-adjusted test is not significant.")
     R["R1.5"] = ("How much of the improvement is truly contributed by failure anticipation?",
         "This is now the question the paper is built around (RQ2, Sections 7.2–7.7). The "
         "answer depends on the action. (a) In protection, very little: a contemporaneous index "
@@ -425,7 +439,9 @@ def build_texts():
 
     R["R3.1"] = ("Predictive performance derived from the same synthetic latent-health model; "
                  "distinguish framework and predictor validation; independently generated degradation.",
-        "We implemented an independently structured degradation world: monotone gamma-process "
+        "We implemented a second degradation world that changes the health-evolution process "
+        "and the telemetry observation map, while retaining the common failure threshold, "
+        "service model and some disturbance mechanisms: monotone gamma-process "
         "wear-out without mean reversion, observed through a four-slot lagged observation map "
         "with different exponents and doubled noise (Section 7.8). Failure is again a "
         "threshold crossing of latent health, so this is a misspecification test and not a "
@@ -433,7 +449,7 @@ def build_texts():
         f"{f_fr['pr_auc']:.3f} against {f_rt['pr_auc']:.3f} when retrained in the new world; in "
         f"closed loop under collapse P6 changes the loss by {msr(S4, 'protection_predictive'):+.1f}%, "
         f"P4 by {msr(S4, 'proactive_ai'):+.1f}% and P1b by {msr(S4, 'protection'):+.1f}% relative to "
-        f"P1 ({ref('structurally different world')}). The manuscript now distinguishes explicitly "
+        f"P1 ({ref('alternative degradation world')}). The manuscript now distinguishes explicitly "
         "between validation of the framework and decomposition (which transfer between the two "
         "families) and of the predictor (valid only within its training family), in Section "
         "7.8, Limitation 2 and the conclusion. A trace-driven evaluation remains future work; we "
@@ -492,8 +508,8 @@ def build_texts():
         "recorded in the result files.")
     R["R3.6"] = ("P5 mapping undefined; perfect state with a mis-calibrated map is not an oracle.",
         "Agreed. The original map is now defined (linear in health between 0.35 and 0.18) and "
-        "retained as P5 to show its consequence. We added P5c, the calibrated perfect-state "
-        "reference: a Monte Carlo estimate of the conditional probability that an element at "
+        "retained as P5 to show its consequence. We added P5c, a Monte-Carlo-calibrated "
+        "privileged-state reference (not a cost-optimal oracle and not an upper bound): a Monte Carlo estimate of the conditional probability that an element at "
         "health h fails within H, obtained from 6,000 simulated trajectories of the generative "
         "model per health-grid point, scenario and element class. "
         f"Under collapse P5c performs {PR.loc[(S4, 'oracle_calibrated')]:.0f} migrations per run "
@@ -517,8 +533,10 @@ def build_texts():
         "this).")
     R["R3.9"] = ("'All policies indistinguishable' under S1 is inconsistent with P2.",
         "Corrected; the sentence was removed and the whole Results and Conclusion text was "
-        "rewritten. Every number in the text is now generated from the result files by the "
-        "same script that produces the tables, an automated check scans the manuscript, "
+        "rewritten. The quantitative results in the text and tables are now generated from the "
+        "result files by the same script that produces the tables (fixed design parameters and "
+        "structural descriptions are written by hand and are covered by unit tests, including a "
+        "manifest test of the 98-element topology), an automated check scans the manuscript, "
         "highlights and letters for claims of the original version, and the qualitative "
         "statements were checked against the result files in an independent pass before "
         "resubmission.")
@@ -594,7 +612,7 @@ BOX_INTRO = {
           "central comparisons were confirmed on 64 previously unused seeds under a frozen "
           "protocol. Section, table and figure numbers refer to the revised manuscript.",
     "R1": "We thank the reviewer for these comments, which led to substantial changes: a "
-          "protection baseline, a 98-element topology, a structurally different degradation "
+          "protection baseline, a 98-element topology, an alternative degradation "
           "world and a decomposition of where the resilience gain comes from. The full response "
           "letter (uploaded as a separate file) begins with a summary of the revision, including "
           "the implementation audit and the frozen confirmation experiment on 64 previously "
@@ -672,7 +690,7 @@ def write_cover(out_dir):
     r, RL, rel, pc, _ = load()
     cf, prot, hrmax, eq_all = _conf()
     text = [
-        "4 November 2026",
+        "November 2026",
         "Editor, Reliability Engineering & System Safety",
         "Re: Revised manuscript JRESS-D-26-06464",
         "Dear Editor,",
@@ -722,7 +740,7 @@ def write_cover(out_dir):
         f"Plain 1:1 protection cuts resilience loss by {min(prot):.1f}-{max(prot):.1f}% vs reactive restoration",
         f"Risk-informed protection adds a confirmed {-cf(S4, 'protection_predictive', 'protection'):.1f}% and {-cf(S6, 'protection_predictive', 'protection'):.1f}% on independent seeds",
         "Exploratory ablation attributes this gain mainly to standby-path selection",
-        "For standby selection a degradation index is equivalent to the learned predictor",
+        "A degradation index matches the learned predictor for standby selection (S4, S6)",
         "Migration gain under common-cause shocks is mostly a detection-delay bypass",
     ]
     for h in hl:

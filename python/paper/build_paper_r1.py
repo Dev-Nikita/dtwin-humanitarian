@@ -575,7 +575,7 @@ def build(out_path: str) -> None:
         "A controlled decomposition over fifteen policies that vary one mechanism at a time "
         "(risk source, criticality differentiation or restoration mechanism), including a "
         "predictive-protection policy that spends the risk estimate only on decisions that "
-        "interrupt no traffic, and a calibrated perfect-state reference.",
+        "interrupt no traffic, and a Monte-Carlo-calibrated privileged-state reference.",
         "Evidence from the evaluated systems, with the central comparisons confirmed on "
         "independent seeds under a frozen protocol, that protection is the most consistent "
         "source of gain, "
@@ -585,6 +585,13 @@ def build(out_path: str) -> None:
         "partly a detection-delay effect and depends on gradual degradation and a nearly free "
         "switch-over.",
     ], prefix="C{i}.")
+    d.p(
+        "Taken together, the novelty is methodological rather than algorithmic: none of the "
+        "individual policies is new, but a mechanism-identifiable closed-loop evaluation of "
+        "risk-informed recovery, in which each source of gain can be switched off separately "
+        "and compared with conventional protection on common random numbers, has, to our "
+        "knowledge, not been reported for hybrid terrestrial–satellite networks."
+    )
     d.p(
         "The evaluation uses a humanitarian and emergency-response deployment as its case study, "
         "because that setting makes the service-criticality hierarchy explicit, but nothing in "
@@ -1023,12 +1030,16 @@ def build(out_path: str) -> None:
         "an isotonic calibrator fitted on the validation episodes [66], [67], and the decision "
         "threshold theta* is selected on the same fold by maximising F1 over a grid of 187 "
         "candidates. The model used in closed loop is chosen on validation data only, by a "
-        "criterion fixed in advance: the highest validation precision–recall "
+        "criterion adopted for this revision and applied without test labels: the highest validation precision–recall "
         "area, since the positive class is rare [68]; models within 0.01 of the best are "
         "treated as tied and the tie is broken by the validation Brier score, since the "
-        "controller consumes probabilities, and then by inference cost. Test metrics are "
-        "computed once, after the choice, and every choice is frozen before the test episodes "
-        f"are used. For the selected model theta* = {theta:.3f}."
+        "controller consumes probabilities, and then by inference cost. The validation fold is "
+        "therefore used three times (calibration, threshold and model choice), which makes the "
+        "validation scores optimistic; the test fold is used only for reporting. Test predictions "
+        "are produced in the same pass as validation predictions, but no test label enters "
+        "calibration, threshold or model choice, and the selected model does not depend on the "
+        "tie-break, which uses timings on unlabeled test features and was not invoked. "
+        f"For the selected model theta* = {theta:.3f}."
     )
     d.h2("4.4 Risk-aware recovery")
     d.p(
@@ -1269,10 +1280,14 @@ def build(out_path: str) -> None:
         "and latency statistics from measurement studies [51], [52]; it is an exploratory, "
         "externally anchored scenario, that is, an externally parameterised stress test and not an "
         "external validation. For the scale experiment of "
-        "Section 7.8 a second topology with 98 elements is used: three LEO orbital planes of "
-        "twelve satellites with intra-plane and inter-plane links, sixteen ground gateways, "
-        "a doubled terrestrial access and edge segment, and arrival rates scaled with the "
-        "number of user gateways. The training corpus is built only from "
+        "Section 7.8 a second topology with 98 elements and 233 undirected links is used: "
+        "three LEO orbital planes of eight satellites (24) with intra-plane ring and "
+        "inter-plane links; two core sites that also act as feeder gateways; and eight "
+        "terrestrial regions, each with one 6G-class, two 5G and one LTE cell, a UAV relay, "
+        "an edge node and three user terminals. Arrival rates are scaled with the number of "
+        "user terminals (factor 6). It is one alternative structure, not a sample of "
+        "topologies, so it tests whether the ranking survives a change of scale and shape "
+        "rather than establishing structural invariance. The training corpus is built only from "
         f"S1–S4 and contains {int(meta['n_train']) + int(meta['n_val']) + int(meta['n_test']):,} "
         f"eligible observation windows at a test-fold prevalence of "
         f"{float(meta['positive_rate_test']):.4f}."
@@ -1323,7 +1338,11 @@ def build(out_path: str) -> None:
         "for each scenario and element class (6,000 trajectories per point of a health grid, "
         "interpolated); an element that has already failed is assigned risk 1, so P5c, like the "
         "telemetry-driven policies, can act before the twin's detector confirms a failure. P5c "
-        "is the calibrated perfect-state reference.",
+        "is a Monte-Carlo-calibrated privileged-state reference: it maps the true health h to "
+        "r(h) = P(failure within H | h), estimated as the fraction of the 6,000 simulated "
+        "trajectories from h that fail within H, and feeds r(h) into the same decision rule as "
+        "P4. It does not optimise cost, is not an upper bound, and its finite-sample table "
+        "is not exactly monotone in h (largest reversal 0.013 between neighbouring grid points).",
         "P6 predictive protection: 1:1 protection plus risk-augmented primary-path choice and "
         "risk-driven standby refresh (Section 4.4), with no migration of live flows. A flow's "
         "standby path is refreshed at most once every 6 slots, and a replacement is adopted only "
@@ -1428,7 +1447,7 @@ def build(out_path: str) -> None:
             "val_pr_auc": "validation PR-AUC", "val_brier": "validation Brier"}),
         "Anticipation performance on episode-disjoint test data at the validation-selected "
         "operating point. The two validation columns are the only quantities used for model "
-        "selection (Section 4.3); the test columns were computed once, after the choice. The "
+        "selection (Section 4.3); test labels are not used for selection. The "
         "threshold rule is the non-learning operator heuristic.", size=6.8)
     fig_pred = d.figure("f05_predictor.png",
                         "Discrimination and calibration of the anticipation models: "
@@ -1448,7 +1467,7 @@ def build(out_path: str) -> None:
         "The drop from validation to test precision–recall area reflects the episode-disjoint "
         "split and the rarity of the positive class. Logistic regression is also ahead of the three tree ensembles on every test metric "
         "of the table; the ordering among the ensembles is not consistent across metrics, "
-        "which is one reason the criterion is fixed on validation data in advance."
+        "which is one reason the choice is made on validation data only."
     )
     fig_lead = d.figure("f06_lead_time.png",
                         "Anticipation lead time of the predictive policy P4 inside the closed "
@@ -1594,7 +1613,8 @@ def build(out_path: str) -> None:
                    "Confirmatory families B1 (primary, Holm over two tests) and B2 (key "
                    "secondary, Holm over sixteen tests) on 64 independent seeds; paired "
                    "differences of cumulative resilience loss, negative values favour the "
-                   "first-named policy.", fmt="{}", size=6.3)
+                   "first-named policy. Confidence intervals are per-contrast (unadjusted); significance "
+                   "decisions use the Holm-adjusted p-values.", fmt="{}", size=6.3)
     fig_cf = d.figure("r04_confirmation.png",
                       "Frozen confirmation on 64 new seeds: paired contrasts of families B1 and "
                       "B2 in cumulative resilience loss, as a percentage of the second-named "
@@ -1983,7 +2003,7 @@ def build(out_path: str) -> None:
     fr_ = ms[ms.setting.str.startswith("frozen predictor (trained")].iloc[0]
     rt_ = ms[ms.setting.str.startswith("reference: retrained")].iloc[0]
     t_ms = d.table(pd.read_csv(os.path.join(TABDIR, "r_t_misspec.csv")),
-                   "Closed-loop outcome in a structurally different world: gamma-process "
+                   "Closed-loop outcome in an alternative degradation world: gamma-process "
                    "wear-out without mean reversion, observed through a four-slot lagged map "
                    "with different exponents and doubled noise. The predictor and all operating "
                    "points are frozen from the jump-diffusion corpus. 24 paired seeds; the "
@@ -1998,8 +2018,9 @@ def build(out_path: str) -> None:
         "The predictor is trained and tested on noisy transformations of the very latent "
         "variable that defines failure, so the offline metrics validate it only within the "
         "generative family that produced them, and perturbing parameters of that family is "
-        "not misspecification. We therefore built a second world that shares no degradation dynamics with "
-        "the first: health decreases monotonically through gamma-distributed wear increments "
+        "not misspecification. We therefore built a second world that changes the "
+        "health-evolution process and the telemetry observation map, while retaining the common "
+        "failure threshold, the service model and some disturbance mechanisms of the first: health decreases monotonically through gamma-distributed wear increments "
         "with no mean reversion, and telemetry reflects the health of four slots earlier "
         "through different exponents and with twice the measurement noise. Frozen and applied "
         f"to this world, the predictor retains a precision–recall area of {fr_['pr_auc']:.3f} "
@@ -2016,7 +2037,7 @@ def build(out_path: str) -> None:
     )
     if R["large"] is not None:
         t_lg = d.table(pd.read_csv(os.path.join(TABDIR, "r_t_large.csv")),
-                       "Results on a 98-element topology with three LEO planes. "
+                       "Results on a 98-element topology with three LEO planes (24 satellites, 233 links). "
                        "The predictor and all operating points are frozen from the 19-element "
                        "reference network. 12 paired seeds.", fmt="{}", size=6.8)
         lg = R["large"]
@@ -2027,8 +2048,9 @@ def build(out_path: str) -> None:
         d.p(
             "A 19-element network cannot represent a satellite constellation, so the "
             "experiment is repeated on a 98-element topology with three LEO orbital "
-            "planes of twelve satellites each, intra-plane and inter-plane links, 16 ground "
-            "gateways and a doubled terrestrial segment (Section 6.2). "
+            "planes of eight satellites each, intra-plane and inter-plane links, two core "
+            "and feeder sites and eight terrestrial regions (98 elements, 233 links; "
+            "Section 6.2). "
             f"{t_lg} shows the outcome. Under collapse the losses are "
             f"P1 {lgL(S4, 'reactive'):.2f}, P1b {lgL(S4, 'protection'):.2f}, "
             f"P3 {lgL(S4, 'degradation_aware'):.2f}, P6 {lgL(S4, 'protection_predictive'):.2f} and "
@@ -2396,6 +2418,11 @@ def build(out_path: str) -> None:
 
     # ------------------------------------------------------ 9. Limitations
     d.h1("9. Limitations")
+    _cr = R["conf"]
+
+    def _rf(sc, pol):
+        return float(_cr[(_cr.scenario == sc) & (_cr.policy == pol)]["backup_refreshes"].mean())
+
     d.numbered([
         "The evaluation is conducted entirely in simulation. No measurements from physical LEO "
         "terminals or 6G-class hardware and no field trial are used. Absolute values are "
@@ -2421,7 +2448,15 @@ def build(out_path: str) -> None:
         f"({fig_mig}). Shared protection and protocol-level session continuity are not "
         "modelled.",
         "The 98-element topology adds orbital planes and inter-satellite links but no orbital "
-        "mechanics: visibility and link availability are not driven by ephemeris.",
+        "mechanics: visibility and link availability are not driven by ephemeris. It is a "
+        "single alternative structure, so it shows that the ranking survives one change of "
+        "scale and shape, not that it is invariant to topology.",
+        "The control-plane cost of risk-driven refresh is counted but not charged in the "
+        "resilience endpoint. Under collapse P6 performs "
+        f"{_rf(S4, 'protection_predictive'):.0f} standby refreshes per run on average and P6i "
+        f"{_rf(S4, 'protection_index'):.0f}, against none for P1b; signalling load, state "
+        "churn and the risk of a refresh racing a failure are not modelled, so the P6 − P1b "
+        "gain is a gain before control-plane overhead.",
         "Correlated failures are modelled by a single-region shared shock; multi-region, "
         "time-extended and cascading dependencies are not addressed.",
         "The controllers are greedy per-flow heuristics. No optimality gap against a global "
