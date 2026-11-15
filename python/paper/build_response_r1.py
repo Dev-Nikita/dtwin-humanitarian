@@ -704,8 +704,9 @@ def write_cover(out_dir):
         "claims a performance gain for one predictive policy; it asks which mechanism the "
         "gain comes from, as Reviewers 1 and 3 suggested. The original title was: 'Predictive "
         "Resilience of Hybrid 5G/6G-Class and LEO Satellite Networks: A Digital-Twin Framework "
-        "for Failure Anticipation and Risk-Aware Recovery'. The research object, authors and "
-        "data are unchanged.",
+        "for Failure Anticipation and Risk-Aware Recovery'. The research subject and the authors are unchanged; the experimental implementation, "
+        "the evaluation protocol, the results and the conclusions were substantially revised in "
+        "response to the reviewers' comments.",
         "The reviewers' comments prompted an end-to-end implementation audit. The audit "
         "identified three issues that materially affected the original quantitative "
         "interpretation — the paired design was not correctly paired, one table used an "
@@ -734,10 +735,9 @@ def write_cover(out_dir):
         "change map links each comment to the revised sections, tables and figures.",
         "The revised manuscript has not been submitted elsewhere. The updated code, the frozen "
         "protocol and the result files are provided as supplementary material and are "
-        "archived on Zenodo (concept doi:10.5281/zenodo.22084965; release v1.2-R1 matches this "
-        "manuscript; the raw simulation results were produced with release v1.1-R1, "
-        "doi:10.5281/zenodo.23957597, and the simulation code and raw result files are identical "
-        "in both).",
+        "archived on Zenodo (concept doi:10.5281/zenodo.22084965). Release v1.3-R1 corresponds to "
+        "the revised manuscript; the simulation code and raw results are unchanged since release "
+        "v1.1-R1 (doi:10.5281/zenodo.23957597).",
         "Yours sincerely,",
         "Nikita Tarasov (corresponding author) and Roman Zinko",
         "Lviv Polytechnic National University",

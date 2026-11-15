@@ -459,7 +459,10 @@ PREAMBLE = r"""%% Elsevier CAS template (els-cas-templates), double-column artic
 \interlinepenalty=0
 \LTchunksize=40
 
-\graphicspath{{figures/}}
+\graphicspath{{./}{figures/}}
+% Text label instead of the e-mail icon, so the source needs no thumbnails/ subfolder
+% (Editorial Manager does not process LaTeX submissions with subfolders).
+\ExplSyntaxOn\bool_gset_true:N \g_stm_nologo_bool\ExplSyntaxOff
 
 \begin{document}
 

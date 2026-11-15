@@ -1,0 +1,34 @@
+{
+  "title": "Where Does Predictive Resilience Come From? Code and data for the simulation-based digital-twin assessment of hybrid 5G/6G-class and LEO satellite networks (revision R1)",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Tarasov, Nikita",
+      "orcid": "0000-0003-1870-3436",
+      "affiliation": "Lviv Polytechnic National University"
+    },
+    {
+      "name": "Zinko, Roman",
+      "orcid": "0000-0002-3275-8188",
+      "affiliation": "Lviv Polytechnic National University"
+    }
+  ],
+  "description": "Simulator, experiment and analysis code, frozen confirmation protocol, raw result files and manuscript-generation scripts for the revised manuscript JRESS-D-26-06464 (Reliability Engineering & System Safety). The raw simulation results were produced with release v1.1-R1 and are unchanged in later releases; later releases change only table, figure and manuscript generation scripts and tests. See README.md, section 8, for the release history.",
+  "keywords": [
+    "resilience",
+    "digital twin",
+    "LEO satellite networks",
+    "5G/6G",
+    "failure prediction",
+    "protection switching",
+    "common random numbers"
+  ],
+  "license": "cc-by-4.0",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/Dev-Nikita/dtwin-humanitarian",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}

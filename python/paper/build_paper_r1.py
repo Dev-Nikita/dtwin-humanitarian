@@ -367,7 +367,7 @@ REFERENCES: List[str] = [
     "J. D. Hunter, “Matplotlib: a 2D graphics environment,” Computing in Science & Engineering, vol. 9, no. 3, pp. 90–95, 2007.",
     "R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction, 2nd ed. MIT Press, 2018.",
     "N. C. Luong et al., “Applications of deep reinforcement learning in communications and networking: a survey,” IEEE Communications Surveys & Tutorials, vol. 21, no. 4, pp. 3133–3174, 2019.",
-    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, concept doi:10.5281/zenodo.22084965 (all versions; release v1.2-R1 matches this manuscript; the raw simulation results were produced with release v1.1-R1, doi:10.5281/zenodo.23957597).",
+    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, concept doi:10.5281/zenodo.22084965 (all versions). Release v1.3-R1 corresponds to this manuscript; the simulation code and raw results are unchanged since release v1.1-R1, doi:10.5281/zenodo.23957597.",
     "P. Pan, G. Swallow, and A. Atlas, \u201cFast reroute extensions to RSVP-TE for LSP tunnels,\u201d IETF RFC 4090, 2005, doi:10.17487/RFC4090.",
     "A. M. Law, Simulation Modeling and Analysis, 5th ed. McGraw-Hill, 2015.",
     "C. Westphal, L. Han, and R. Li, “LEO satellite networking relaunched: survey and current research challenges,” ITU Journal on Future and Evolving Technologies, vol. 4, no. 4, pp. 711–736, 2023.",
@@ -375,6 +375,9 @@ REFERENCES: List[str] = [
     "H.-W. Lee, E. Modiano, and K. Lee, “Diverse routing in networks with probabilistic failures,” IEEE/ACM Transactions on Networking, vol. 18, no. 6, pp. 1895–1907, 2010.",
     "F. Dikbiyik, M. Tornatore, and B. Mukherjee, “Minimizing the risk from disaster failures in optical backbone networks,” Journal of Lightwave Technology, vol. 32, no. 18, pp. 3175–3183, 2014.",
     "J. Bogle, N. Bhatia, M. Ghobadi, I. Menache, N. Bjørner, A. Valadarsky, and M. Schapira, “TEAVAR: striking the right utilization-availability balance in WAN traffic engineering,” in Proc. ACM SIGCOMM, 2019, pp. 29–43.",
+    "J. Zeng, B. Wu, and L. Jiang, “Resilience evaluation of communication infrastructure networks under multi-scenario disaster simulations,” Reliability Engineering & System Safety, vol. 272, 112431, 2026, doi:10.1016/j.ress.2026.112431.",
+    "Y. Liu and S. Chen, “Quantifying predictive resilience: a fault-tolerant forecasting framework with operational boundaries for natural hazards,” Reliability Engineering & System Safety, vol. 274, 112424, 2026, doi:10.1016/j.ress.2026.112424.",
+    "H. Dui, W. Guo, W. Xia, and S. Wu, “Digital twin-based resilience analysis and emergency maintenance with generative AI of smart urban metro systems,” Reliability Engineering & System Safety, vol. 265, 111537, 2026, doi:10.1016/j.ress.2025.111537.",
 ]
 
 
@@ -627,9 +630,13 @@ def build(out_path: str) -> None:
         "Sterbenz et al. gave the canonical survivability taxonomy [10], Cholda et al. formalised "
         "resilience differentiation across service classes [11], the notion that our criticality-"
         "dependent risk budgets operationalise, and Gomes et al. surveyed protection strategies "
-        "against large-scale disasters [12]. This literature measures resilience well; it "
-        "generally treats the restoration process as given, not as a decision variable "
-        "whose timing can be optimised."
+        "against large-scale disasters [12]. Recent studies in this journal evaluate "
+        "communication infrastructure networks under multi-hazard simulation with operator data "
+        "[86] and combine a digital twin with resilience analysis and emergency maintenance "
+        "planning for urban metro systems [88]. This literature measures resilience well; it "
+        "generally treats the restoration process as given, or optimises it with the failure "
+        "process known, and does not ask how much of a recovery gain is due to anticipation "
+        "rather than to conventional protection."
     )
     d.h2("2.2 Dynamic reliability, prognostics and failure anticipation")
     d.p(
@@ -645,7 +652,12 @@ def build(out_path: str) -> None:
         "analysis is the informative view [68]; and when a controller consumes probabilities "
         "rather than labels, those probabilities must be calibrated [66], [67]. Common-cause "
         "failure modelling, which we use to construct one of the disruption scenarios, has its "
-        "own established formalism in probabilistic risk assessment [18], [19]."
+        "own established formalism in probabilistic risk assessment [18], [19]. Liu and Chen use "
+        "the term predictive resilience for the robustness of a hazard-forecasting system to "
+        "the loss of sensor data [87]; in the present paper the term denotes the resilience a "
+        "network gains by acting on predictions, and the question is how much of that gain "
+        "remains once conventional protection and contemporaneous degradation information are "
+        "controlled for."
     )
     d.h2("2.3 Digital twins for reliability and network management")
     d.p(
@@ -1243,6 +1255,17 @@ def build(out_path: str) -> None:
         "independently of the monolithic scientific simulator, and to "
         "support reproduction; it is an engineering artefact, not a contribution, and its "
         "details are given in the accompanying repository."
+    )
+    d.p(
+        "Parts of the code written for this revision (the corrections of the paired design and "
+        "of the interruption accounting, the added policies, the experiment and analysis "
+        "scripts, the unit tests, and the scripts that generate tables and manuscript text "
+        "from the result files) were developed with Anthropic Claude (Opus) used as a coding "
+        "assistant under the authors' direction. The authors specified the changes, reviewed "
+        "the code and fixed the confirmation protocol before the confirmation runs. Correctness "
+        "is checked by the unit tests and by the archived end-to-end pipeline, so every "
+        "reported number can be reproduced from the released code and result files without "
+        "any AI tool."
     )
     d.h2("6.2 Parameters and scenarios")
     params = pd.DataFrame([
@@ -2601,11 +2624,11 @@ def build(out_path: str) -> None:
         "control-plane services and deployment manifests), together with the processed result "
         "tables from which every figure and table in this manuscript is generated, is archived on "
         "Zenodo [78]. The development version is maintained on GitHub at "
-        "https://github.com/Dev-Nikita/dtwin-humanitarian. Release v1.2-R1 differs from v1.1-R1 "
-        "in the table, figure and manuscript generation scripts (recovery times are pooled over "
-        "runs, which changes two derived tables) and in an additional unit test; the simulation "
-        "code and the raw result files are identical, so the experiments need not be re-run. A "
-        "snapshot of the "
+        "https://github.com/Dev-Nikita/dtwin-humanitarian. Release v1.3-R1 corresponds to this "
+        "manuscript. Compared with v1.1-R1, which produced the raw results, it changes only the "
+        "table, figure and manuscript generation scripts (recovery times are pooled over runs, "
+        "which changes two derived tables) and adds a unit test; the simulation code and the raw "
+        "result files are identical, so the experiments need not be re-run. A snapshot of the "
         "same reproducibility package is provided as supplementary material with this submission. "
         "It includes the frozen confirmation protocol, its analysis script, the commit "
         "identifier of the code freeze and the confirmation results. "
@@ -2624,12 +2647,13 @@ def build(out_path: str) -> None:
         "involved.", size=9.5)
     d.h1("Declaration of generative AI and AI-assisted technologies in the manuscript "
          "preparation process")
-    d.p("During the preparation of this work the authors used OpenAI ChatGPT and Anthropic "
-        "Claude (Opus) for language editing and for assistance in assembling the manuscript "
-        "source files from machine-generated result tables. No content was accepted without "
-        "verification against those tables. The authors reviewed and edited the output and take "
-        "full responsibility for the content of the publication. All scientific content, "
-        "experiments, analyses and conclusions are the authors\' own.", size=9.5)
+    d.p("During the preparation and revision of this work the authors used OpenAI ChatGPT and "
+        "Anthropic Claude (Opus) for language editing, for drafting and revising text of the "
+        "manuscript and of the response to the reviewers, and for assembling the manuscript "
+        "source files from machine-generated result tables. The use of Claude as a coding "
+        "assistant for the research software is described in Section 6.1. The authors reviewed "
+        "and edited all AI-assisted output, checked it against the result files, and take full "
+        "responsibility for the content of the publication.", size=9.5)
 
     d.h1("References")
     for i, ref in enumerate(REFERENCES, start=1):
