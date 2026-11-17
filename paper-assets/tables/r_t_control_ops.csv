@@ -1,0 +1,9 @@
+scenario,policy,loss,standby refreshes,path computations,protection switches,switch-overs with no feasible standby,reactive restorations
+S4 infrastructure collapse,P1b,12.13,0.0,2160,35.6,7.8,20.2
+S4 infrastructure collapse,P1b-r,11.74,150.8,4406,40.9,9.1,15.1
+S4 infrastructure collapse,P6,11.70,210.2,4807,40.0,9.3,15.2
+S4 infrastructure collapse,P6-slow,11.95,126.6,3361,36.8,8.5,18.3
+S6 common cause*,P1b,21.02,0.0,1661,27.3,0.6,9.1
+S6 common cause*,P1b-r,20.99,46.8,1900,27.6,0.6,8.8
+S6 common cause*,P6,20.29,57.2,1975,34.3,0.9,2.1
+S6 common cause*,P6-slow,20.30,30.2,1848,34.3,0.9,2.1

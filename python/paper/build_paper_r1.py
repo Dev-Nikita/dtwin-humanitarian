@@ -250,6 +250,9 @@ class Paper:
                         or column_name.endswith(" p") or " p " in column_name)
                         and 0 <= v < 0.0001):
                     cells[i].text = "<0.0001"
+                elif (isinstance(v, float) and v != v) or (isinstance(v, str)
+                                                         and v.strip().lower() == "nan"):
+                    cells[i].text = "–"   # undefined statistic (see the table note)
                 else:
                     cells[i].text = fmt.format(v) if isinstance(v, float) else str(v)
                 for pp in cells[i].paragraphs:
@@ -367,7 +370,7 @@ REFERENCES: List[str] = [
     "J. D. Hunter, “Matplotlib: a 2D graphics environment,” Computing in Science & Engineering, vol. 9, no. 3, pp. 90–95, 2007.",
     "R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction, 2nd ed. MIT Press, 2018.",
     "N. C. Luong et al., “Applications of deep reinforcement learning in communications and networking: a survey,” IEEE Communications Surveys & Tutorials, vol. 21, no. 4, pp. 3133–3174, 2019.",
-    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, concept doi:10.5281/zenodo.22084965 (all versions). Release v1.3-R1 corresponds to this manuscript; the simulation code and raw results are unchanged since release v1.1-R1, doi:10.5281/zenodo.23957597.",
+    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, concept doi:10.5281/zenodo.22084965 (all versions). Release v1.4-R1 corresponds to this manuscript; the raw results of release v1.1-R1, doi:10.5281/zenodo.23957597, are unchanged in it.",
     "P. Pan, G. Swallow, and A. Atlas, \u201cFast reroute extensions to RSVP-TE for LSP tunnels,\u201d IETF RFC 4090, 2005, doi:10.17487/RFC4090.",
     "A. M. Law, Simulation Modeling and Analysis, 5th ed. McGraw-Hill, 2015.",
     "C. Westphal, L. Han, and R. Li, “LEO satellite networking relaunched: survey and current research challenges,” ITU Journal on Future and Evolving Technologies, vol. 4, no. 4, pp. 711–736, 2023.",
@@ -465,42 +468,51 @@ def build(out_path: str) -> None:
     _hr = _CT[(_CT.family == "exploratory") & _CT.contrast.str.startswith("protection_oracle")]
     _hrmax = -_hr.rel_pct.min()
     _eq_all = bool(_CEQ.equivalent.all())
+    _RC = pd.read_csv(os.path.join(TABDIR, "r_t_refresh_control.csv"), dtype=str)
+    _RC["Wilcoxon p"] = _RC["Wilcoxon p"].astype(float)
+    _OPS = pd.read_csv(os.path.join(TABDIR, "r_t_control_ops.csv"), dtype=str)
+
+    def _rcv(sc, contrast):
+        """(difference, lower, upper, relative %) of an exploratory refresh-control contrast."""
+        row = _RC[(_RC.scenario == SCEN_LABEL[sc]) & (_RC.contrast == contrast)].iloc[0]
+        v = row["paired difference [95% CI]"]
+        lo, hi = [float(x) for x in v[v.index("[") + 1:v.index("]")].split(",")]
+        return float(v.split(" ")[0]), lo, hi, float(row["relative [%]"])
+
+    def _share(sc):
+        """Share of the P6 - P1b gap reproduced by risk-free standby repair, in %."""
+        return 100.0 * _rcv(sc, "P1b-r - P1b")[0] / _rcv(sc, "P6 - P1b")[0]
+
+    def _ops(sc, pol, col):
+        return float(_OPS[(_OPS.scenario == SCEN_LABEL[sc]) & (_OPS.policy == pol)][col].iloc[0])
 
     d.h1("Abstract")
     d.p(
-        "Hybrid terrestrial–satellite networks keep critical services alive when regional "
-        "infrastructure is lost, and failure prediction is often proposed as a way of making "
-        "them more resilient. We ask where such a gain comes from. A simulation-based digital "
-        "twin of a hybrid 5G/6G-class and low-Earth-orbit network hides element degradation "
-        "behind noisy, delayed telemetry, and a calibrated classifier estimates the probability "
-        "of failure within a horizon. Fifteen recovery policies, a controlled set of "
-        "mechanistic contrasts in risk source, criticality differentiation and restoration "
-        "mechanism, are compared on common random numbers in "
-        f"{R['n_runs']:,} development runs and a frozen confirmation on 64 independent seeds "
-        f"of the same model ({len(R['conf']):,} runs). Plain 1:1 protection, which uses no risk "
-        f"information, reduces cumulative resilience loss relative to reactive restoration by "
-        f"{min(_prot):.1f}–{max(_prot):.1f}%. Spending the risk estimate only on primary-path "
-        "choice and standby-path refresh (risk-informed protection) adds a confirmed "
+        "Failure prediction is often proposed to make hybrid terrestrial–satellite networks "
+        "more resilient, but its benefit can be confounded with conventional protection and "
+        "with faster reaction to failures that have already occurred. We separate these "
+        "mechanisms in a simulation-based digital twin of a hybrid 5G/6G-class and "
+        "low-Earth-orbit network with hidden degradation, noisy telemetry and delayed failure "
+        "detection. Fifteen recovery policies are compared on common random numbers in "
+        f"{R['n_runs']:,} development runs, and the central contrasts are confirmed on 64 "
+        f"independent seeds ({len(R['conf']):,} runs). Plain 1:1 protection reduces cumulative "
+        f"resilience loss by {min(_prot):.1f}–{max(_prot):.1f}% relative to reactive "
+        "restoration. Risk-informed protection with dynamic standby refresh adds a confirmed "
         f"{-_c(S4, 'protection_predictive', 'protection'):.1f}% under infrastructure collapse "
         f"and {-_c(S6, 'protection_predictive', 'protection'):.1f}% under common-cause "
-        "disruption; in that role a contemporaneous degradation index is "
-        + ("statistically equivalent to" if _eq_all else "practically indistinguishable from")
-        + f" the learned predictor, and perfect state adds at most {_hrmax:.1f}% (exploratory). "
-        "Predictive make-before-break migration is not significantly different from "
-        "protection under collapse and satellite-segment degradation after multiplicity "
-        "correction, but worse under handover dynamics and common-cause disruption; under the "
-        "latter its gain over reactive restoration is almost entirely a bypass of the "
-        "detection delay. Its remaining gain is confined to gradual degradation and depends on "
-        "the switch-over cost, the topology and the seed set. In an exploratory, externally "
-        "parameterised satellite stress test, migration was within noise of reactive "
-        f"restoration ({rel_(S7, 'proactive_ai', 'reactive'):+.1f}%) while protection kept a "
-        f"{-rel_(S7, 'protection', 'reactive'):.0f}% reduction. In the evaluated systems, risk "
-        "information produced its most consistent gains within protection-based actions "
-        "rather than in pre-emptive migration."
+        "disruption. An exploratory control shows that under collapse "
+        f"{_share(S4):.0f}% of this gain is reproduced by risk-free repair of failed standby "
+        "paths, whereas under common-cause disruption it requires degradation information, "
+        "for which a contemporaneous degradation index "
+        + ("is statistically equivalent to" if _eq_all else "performs like")
+        + " the learned predictor. Predictive migration of live traffic is not significantly "
+        "better than protection under collapse and is worse under handover and common-cause "
+        "disruption, where its gain over reactive restoration is mostly a bypass of the "
+        "detection delay. Operational validation remains necessary."
     )
-    d.p("Keywords: predictive resilience; failure anticipation; digital twin; protection and "
-        "restoration; dynamic reliability; non-terrestrial networks; common-cause failure; "
-        "critical communication infrastructure.", italic=True)
+    d.p("Keywords: predictive resilience; simulation-based digital twin; protection and "
+        "restoration; dynamic reliability; non-terrestrial networks; common-cause failure.",
+        italic=True)
 
     # ------------------------------------------------------------ 1. Intro
     d.h1("1. Introduction")
@@ -515,8 +527,8 @@ def build(out_path: str) -> None:
         "considered, and in emergency deployments used, as a resilience measure [45], [48], "
         "[49]. They introduce an engineering question that this paper addresses: given that "
         "some elements of such a system will degrade and fail, is it worth predicting those "
-        "failures and acting on the predictions, how much does that buy, and under what "
-        "conditions is the purchase worthwhile?"
+        "failures and acting on the predictions, what resilience benefit does that provide, and "
+        "under which conditions does the benefit exceed the cost of acting?"
     )
     d.p(
         "The reliability-engineering literature provides the measurement apparatus. Resilience is "
@@ -581,16 +593,16 @@ def build(out_path: str) -> None:
         "predictive-protection policy that spends the risk estimate only on decisions that "
         "interrupt no traffic, and a Monte-Carlo-calibrated privileged-state reference. In that "
         "policy the use of risk information and the dynamic refresh of the standby path enter "
-        "together; they are separated only by exploratory ablations.",
+        "together; an exploratory control with risk-free standby repair separates them.",
         "Evidence from the evaluated systems, with the central comparisons confirmed on "
-        "independent seeds under a frozen protocol, that protection is the most consistent "
-        "source of gain, "
-        "that risk-informed protection with dynamic standby refresh adds a small confirmed "
-        "improvement over static protection, which an exploratory decomposition attributes "
-        "almost entirely to standby-path selection and in which a simple degradation index is "
-        "equivalent to the learned predictor (collapse and common-cause scenarios), and that the benefit of pre-emptive migration is "
-        "partly a detection-delay effect and depends on gradual degradation and a nearly free "
-        "switch-over.",
+        "independent seeds under a frozen protocol. Protection is the most consistent source "
+        "of gain. Risk-informed protection with dynamic standby refresh adds a small confirmed "
+        "improvement over static protection; exploratory controls attribute it under collapse "
+        "to the repair of failed standby paths, which needs no risk information, and under "
+        "common-cause disruption to degradation-informed standby selection, for which a simple "
+        "degradation index is equivalent to the learned predictor. The benefit of pre-emptive "
+        "migration is partly a detection-delay effect and depends on gradual degradation and "
+        "a nearly free switch-over.",
     ], prefix="C{i}.")
     d.p(
         "Taken together, the novelty is methodological rather than algorithmic: none of the "
@@ -598,9 +610,11 @@ def build(out_path: str) -> None:
         "risk-informed recovery, in which the main sources of gain are compared with conventional "
         "protection on common random numbers and separated as far as the policy design allows, "
         "has, to our knowledge, not been reported for hybrid terrestrial–satellite networks. The "
-        "separation is not complete: risk-informed protection differs from static protection "
-        "both in the risk information it uses and in refreshing its standby path, and the "
-        "learned predictor adds no confirmed practical gain over a degradation index in that role."
+        "separation matters for the conclusions: risk-informed protection differs from static "
+        "protection both in the risk information it uses and in repairing its standby path, "
+        "and only a control with risk-free standby repair shows which of the two carries the "
+        "gain in each scenario. The learned predictor adds no confirmed practical gain over a "
+        "degradation index in that role."
     )
     d.p(
         "The evaluation uses a humanitarian and emergency-response deployment as its case study, "
@@ -1587,7 +1601,8 @@ def build(out_path: str) -> None:
                      "scenarios (twenty tests, paired t-test, Holm-corrected), development "
                      "campaign. Mean recovery here is the per-run mean, with 0 for a run without "
                      "interruption, as required for the paired test; Section 7.4 gives pooled "
-                     "recovery times.", fmt="{}", size=7.0)
+                     "recovery times. A dash marks a percentage that is undefined because the "
+                     "reference value is zero.", fmt="{}", size=7.0)
     n_conf = int((R["sig"]["family"] == "confirmatory").sum())
     conf = R["sig"][R["sig"]["family"] == "confirmatory"]
     n_hs = int((conf["p_holm"] < 0.05).sum())
@@ -1606,7 +1621,9 @@ def build(out_path: str) -> None:
     t_contr = d.table(pd.read_csv(os.path.join(TABDIR, "r_t_contrasts.csv")),
                       "Exploratory paired contrasts on cumulative resilience loss in the "
                       "development campaign (24 seeds; uncorrected Wilcoxon signed-rank p). "
-                      "Negative differences favour the first-named policy.", fmt="{}", size=6.3)
+                      "Negative differences favour the first-named policy. A dash marks a "
+                      "standardised effect that is undefined because all paired differences are "
+                      "zero.", fmt="{}", size=6.3)
     d.p(
         f"{t_contr} lists the paired contrasts that isolate each mechanism in "
         "scenarios S3–S7. They are exploratory and are reported with intervals, not as tests."
@@ -2108,7 +2125,7 @@ def build(out_path: str) -> None:
         f"({s7fail:.1f} per run), and although P4 anticipates about half of them, it performs "
         f"{s7mig:.0f} migrations per run against {s7mig5:.0f} for the calibrated "
         "perfect-state policy, so most of its migrations do not pay. The "
-        f"migration policies are within noise of reactive restoration "
+        f"migration policies are not distinguishable from reactive restoration "
         f"({rel_(S7, 'proactive_ai', 'reactive'):+.1f}% for P4, interval "
         f"{ci_(S7, 'proactive_ai', 'reactive')}; {rel_(S7, 'degradation_aware', 'reactive'):+.1f}% "
         "for P3), while protection and predictive protection improve on it "
@@ -2142,8 +2159,8 @@ def build(out_path: str) -> None:
         f"P1b finds its standby path infeasible {pmt.iloc[0]['infeasible switches / run (P1b)']:.1f} "
         "times per run, and costs it "
         f"{pmt.iloc[0]['P1b'] - pmt.iloc[2]['P1b']:.2f} slot-equivalents against the optimistic "
-        "model; reservation recovers most of that. The advantage of risk-informed standby "
-        "selection is present under all three models in both scenarios, with intervals that "
+        "model; reservation recovers most of that. The advantage of P6 over P1b "
+        "is present under all three models in both scenarios, with intervals that "
         "exclude zero (P6 − P1b column), so the effect tested in B1 does not depend on the "
         "capacity assumption. Two further properties of the protection model should be noted. "
         "Its switch-over is triggered by the same three-slot KPI-based detector as reactive "
@@ -2191,12 +2208,62 @@ def build(out_path: str) -> None:
             f"ask which of them carries the effect. {t_p6d} separates them in an "
             "exploratory ablation run after the confirmation on the same seeds. Under collapse "
             f"{_desc(S4)}. Under common-cause disruption {_desc(S6)}. "
-            + "The effect of predictive protection therefore comes almost entirely from "
-            "keeping the standby path off endangered elements; using risk to choose the primary "
-            "path adds nothing detectable, plausibly because a well-chosen standby path already "
-            "absorbs the failures that a riskier primary path suffers, and the full policy is "
-            "indistinguishable from the standby-only variant in both scenarios." +
-            " The ablation is exploratory and was not part of the frozen protocol."
+            + "The effect of predictive protection therefore comes almost entirely from the "
+            "standby path; using risk to choose the primary path adds nothing detectable, and "
+            "the full policy is indistinguishable from the standby-only variant in both "
+            "scenarios. The ablation is exploratory and was not part of the frozen protocol."
+        )
+
+    if os.path.exists(os.path.join(TABDIR, "r_t_refresh_control.csv")):
+        t_rc = d.table(_RC, "Exploratory controls for the P6 − P1b contrast, run after the "
+                       "confirmation on the same 64 seeds. P1b-r is 1:1 protection that also "
+                       "re-provisions a standby path observed down or missing while the primary "
+                       "path is up, using the plain capacity-feasible disjoint shortest path and "
+                       "no risk information. P6-slow is P6 with standby re-evaluation limited to "
+                       "once per 30 slots per flow instead of 6. P1b and P6 reproduce the "
+                       "confirmation runs exactly. Uncorrected Wilcoxon p.", fmt="{}", size=6.6)
+        t_ops = d.table(_OPS, "Control-plane operations per run (means over the 64 seeds) for "
+                        "the policies of the previous table. Path computations include "
+                        "admission, restoration and standby (re)selection. None of these "
+                        "operations is charged to the resilience endpoint.", fmt="{}", size=6.6)
+        r4, r6 = _rcv(S4, "P6 - P1b-r"), _rcv(S6, "P6 - P1b-r")
+        q4, q6 = _rcv(S4, "P1b-r - P1b"), _rcv(S6, "P1b-r - P1b")
+        w4, w6 = _rcv(S4, "P6-slow - P6"), _rcv(S6, "P6-slow - P6")
+        d.p(
+            "The ablation changes where risk enters P6 but leaves one difference to P1b in "
+            "place. P1b re-provisions its standby path only after a switch-over, so a standby "
+            "path that fails while the primary path is up stays down until it is needed; P6 "
+            f"replaces it. {t_rc} adds the missing control, P1b-r, which re-provisions a down "
+            "or missing standby path without any risk information. Under collapse P1b-r "
+            f"changes the loss by {q4[3]:+.2f}% relative to P1b and reproduces {_share(S4):.0f}% "
+            f"of the P6 − P1b gain; what remains between P6 and P1b-r is {r4[3]:+.2f}% "
+            f"({r4[0]:+.3f}, 95% CI [{r4[1]:.3f}, {r4[2]:.3f}], Wilcoxon p = "
+            f"{float(_RC[(_RC.scenario == SCEN_LABEL[S4]) & (_RC.contrast == 'P6 - P1b-r')]['Wilcoxon p'].iloc[0]):.2f}), "
+            "a small residual whose sign is consistent but whose size is within a tenth of the "
+            "repair effect. Under collapse the confirmed gain of predictive protection is "
+            "therefore mainly a gain of standby maintenance, which needs no risk information. Under common-cause disruption the result is the "
+            f"opposite: standby repair alone is worth {q6[3]:+.2f}%, and degradation-informed "
+            f"standby selection adds {r6[3]:+.2f}% on top of it ({r6[0]:+.3f}, 95% CI "
+            f"[{r6[1]:.3f}, {r6[2]:.3f}]). Because the index-based P6i is equivalent to P6 "
+            "there (Section 7.3), this is a gain of contemporaneous degradation information, "
+            "not of forecasting: when a shock damages a region, the standby paths that avoid "
+            "the visibly degraded elements of that region are the ones that survive."
+        )
+        d.p(
+            f"{t_ops} reports the control-plane work that these gains require. Under collapse "
+            f"P6 performs {_ops(S4, 'P6', 'standby refreshes'):.0f} standby refreshes and "
+            f"{_ops(S4, 'P6', 'path computations'):,.0f} path computations per run, against "
+            f"none and {_ops(S4, 'P1b', 'path computations'):,.0f} for P1b; P1b-r needs "
+            f"{_ops(S4, 'P1b-r', 'standby refreshes'):.0f} and "
+            f"{_ops(S4, 'P1b-r', 'path computations'):,.0f}. Under common-cause disruption the "
+            f"numbers are much smaller ({_ops(S6, 'P6', 'standby refreshes'):.0f} refreshes for "
+            f"P6). Limiting re-evaluation five-fold (P6-slow) costs nothing measurable under "
+            f"common-cause disruption ({w6[3]:+.2f}%, with "
+            f"{_ops(S6, 'P6-slow', 'standby refreshes'):.0f} refreshes), but under collapse it "
+            f"loses {100 * w4[0] / -_rcv(S4, 'P6 - P1b')[0]:.0f}% of the gain over P1b "
+            f"({w4[3]:+.2f}%), because there the gain comes from repairing standby paths "
+            "quickly. These controls are exploratory and were not part of the frozen protocol; "
+            "they qualify the interpretation of the confirmed contrast, not its result."
         )
 
     # ------------------------------------------------------------ 7.10 horizon etc.
@@ -2301,7 +2368,7 @@ def build(out_path: str) -> None:
         f"and that of P6 between {dst['P6 loss'].min():.2f} and {dst['P6 loss'].max():.2f}. "
         "The criticality slope and the risk base are inert, because the budgets, not "
         "the routing penalty, decide when a policy acts. The steep budget profile hurts P4, "
-        "and the nominal profile is within noise of the best one for it, so the nominal "
+        "and the nominal profile is not distinguishable from the best one for it, so the nominal "
         "configuration does not handicap predictive migration; P6 is insensitive to the "
         f"profile and has a lower loss than protection alone in every setting "
         f"({dst['P6 vs P1b [%]'].max():+.1f}% to {dst['P6 vs P1b [%]'].min():+.1f}%), with "
@@ -2353,9 +2420,12 @@ def build(out_path: str) -> None:
         f"reduced the loss by {min(_prot):.1f}–{max(_prot):.1f}% on the confirmation seeds. "
         "The second, which links this study to risk-aware backup provisioning [83], [84], [85], "
         "is exposure control through decisions that interrupt nothing: choosing a "
-        "low-risk primary path and keeping the standby path off endangered elements; an "
-        "exploratory ablation (Section 7.9) attributes practically all of it to the standby "
-        "path. Its "
+        "low-risk primary path and keeping the standby path off endangered elements, together "
+        "with keeping the standby path repaired. Exploratory controls (Section 7.9) locate "
+        "practically all of it in the standby path and show that its source depends on the "
+        f"scenario: under collapse {_share(S4):.0f}% of it is standby repair, which needs no "
+        "risk information, and under common-cause disruption it is degradation-informed "
+        "standby selection. Its "
         f"effect is small, {-_c(S4, 'protection_predictive', 'protection'):.1f}% and "
         f"{-_c(S6, 'protection_predictive', 'protection'):.1f}% on top of protection, but it was "
         "confirmed on fresh seeds, holds under all three standby-capacity models and in nine of "
@@ -2370,11 +2440,15 @@ def build(out_path: str) -> None:
     )
     d.h2("8.2 Why prediction adds little to protection")
     d.p(
-        "Inside the protection family the source of the risk estimate does not matter: a "
-        "contemporaneous index "
+        "Inside the protection family the two evaluated risk sources produced practically "
+        "equivalent outcomes: a contemporaneous index "
         + ("is statistically equivalent to " if _eq_all else "performs like ")
-        + "the trained predictor within margins of 3% of the protection loss, and perfect "
-        f"state knowledge adds at most {_hrmax:.1f}%. The reason is the action. A standby path "
+        + "the trained predictor within the prespecified margins (3% of the protection loss) "
+        f"under collapse and common-cause disruption, and perfect state knowledge adds at most "
+        f"{_hrmax:.1f}%. The control with risk-free standby repair (Section 7.9) narrows this "
+        "further: under collapse most of what predictive protection gains over static "
+        "protection does not need risk information at all, and under common-cause disruption "
+        "it needs only the current degradation state. The reason is the action. A standby path "
         "only has to avoid elements that are visibly unhealthy now; whether they will fail in "
         "eight or in eighteen slots is irrelevant to that choice, and a wrong choice costs "
         "nothing because no traffic is moved. Migration is different: it moves live traffic at "
@@ -2383,7 +2457,7 @@ def build(out_path: str) -> None:
         "campaign at the nominal settings, "
         "perfect state knowledge used for migration has the lowest loss of all policies under "
         "collapse, and the learned predictor is ahead of the index where transient signatures "
-        "are frequent. Among protection policies it does not matter. The information "
+        "are frequent. Among protection policies the source makes no detectable difference. The information "
         "need not come from a forecaster: under collapse, index-driven migration with uniform "
         "treatment of service classes (P3u) also has a lower loss than both protection "
         "policies in the development campaign. Three properties of the modelled system "
@@ -2403,8 +2477,8 @@ def build(out_path: str) -> None:
         "under collapse, at one slot "
         "it is already behind protection. Degradation must be gradual and observable, which "
         "excludes common-cause shocks and scheduled reconfiguration; the externally "
-        "parameterised stress test S7, where predictive migration was within noise of reactive "
-        "restoration, is an example. And the graph must offer "
+        "parameterised stress test S7, where predictive migration was not distinguishable from "
+        "reactive restoration, is an example. And the graph must offer "
         "alternatives to move to: on the 98-element topology, with three orbital planes, "
         "predictive migration had the lowest loss under collapse. The gap "
         "between the learned predictor and perfect state in the migration role is an exploratory "
@@ -2412,8 +2486,8 @@ def build(out_path: str) -> None:
         "access, not a measured achievable bound; in the standby role the gap is almost nil. "
         "An operator should establish detection latency, switch-over cost, the availability "
         "of disjoint standby capacity and the share of failures with an observable precursor "
-        "before investing in anticipation instead of protection, and should use a simple "
-        "degradation index for standby selection in any case."
+        "before investing in anticipation instead of protection, and should keep standby "
+        "paths repaired and use a simple degradation index for standby selection in any case."
     )
     d.h2("8.4 What the digital twin contributes")
     d.p(
@@ -2482,12 +2556,13 @@ def build(out_path: str) -> None:
         "mechanics: visibility and link availability are not driven by ephemeris. It is a "
         "single alternative structure, so it shows that the ranking survives one change of "
         "scale and shape, not that it is invariant to topology.",
-        "The control-plane cost of risk-driven refresh is counted but not charged in the "
-        "resilience endpoint. Under collapse P6 performs "
+        "The control-plane cost of standby refresh is counted (Section 7.9) but not charged "
+        "in the resilience endpoint. Under collapse P6 performs "
         f"{_rf(S4, 'protection_predictive'):.0f} standby refreshes per run on average and P6i "
         f"{_rf(S4, 'protection_index'):.0f}, against none for P1b; signalling load, state "
         "churn and the risk of a refresh racing a failure are not modelled, so the P6 − P1b "
-        "gain is a gain before control-plane overhead.",
+        "gain is a gain before control-plane overhead. The risk-free repair control and the "
+        "rate-limited variant were added after the confirmation and are exploratory.",
         "Correlated failures are modelled by a single-region shared shock; multi-region, "
         "time-extended and cascading dependencies are not addressed.",
         "The controllers are greedy per-flow heuristics. No optimality gap against a global "
@@ -2506,9 +2581,10 @@ def build(out_path: str) -> None:
         "Trace-driven evaluation. Coupling the twin to a constellation simulator [50], [54] or "
         "to captured operational telemetry would allow the degradation model to be fitted "
         "rather than specified, and is the only route to validating the predictor itself.",
-        "Protection design under uncertainty. Since risk information pays most reliably "
-        "through standby selection, shared protection with risk-aware backup placement is "
-        "the most promising direction suggested by the results.",
+        "Protection design under uncertainty. Since the gains of risk information in this study "
+        "came through the standby path (its repair under collapse, its degradation-informed "
+        "placement under common-cause shocks), shared protection with degradation-aware backup "
+        "placement is the most promising direction suggested by the results.",
         "Richer common-cause structures, including multi-region and cascading dependencies.",
     ])
 
@@ -2518,8 +2594,8 @@ def build(out_path: str) -> None:
         "This paper asked where the resilience benefit of failure prediction comes from in a "
         "hybrid terrestrial–satellite network, and answered it with a simulation-based digital "
         "twin in which the degradation state is hidden, detection is delayed and fifteen "
-        "recovery policies are compared on common random numbers with a physically consistent "
-        "account of every interruption. The central comparisons were re-tested on 64 "
+        "recovery policies are compared on common random numbers with a corrected, internally "
+        "consistent interruption accounting. The central comparisons were re-tested on 64 "
         "independent seeds of the same simulation model under a protocol frozen before they "
         "were run."
     )
@@ -2530,8 +2606,11 @@ def build(out_path: str) -> None:
         "decisions that interrupt no traffic (primary-path choice and standby refresh) added "
         f"a confirmed {-_c(S4, 'protection_predictive', 'protection'):.1f}% under "
         f"infrastructure collapse and {-_c(S6, 'protection_predictive', 'protection'):.1f}% "
-        "under common-cause disruption, which an exploratory ablation attributes practically "
-        "entirely to the choice of the standby path, and for this role a contemporaneous degradation index "
+        "under common-cause disruption. Exploratory controls locate this gain in the standby "
+        f"path and show that its source differs by scenario: under collapse {_share(S4):.0f}% "
+        "of it is reproduced by repairing failed standby paths without any risk information, "
+        "while under common-cause disruption it comes from degradation-informed standby "
+        "selection, for which a contemporaneous degradation index "
         + ("was statistically equivalent to" if _eq_all else "performed like")
         + f" the learned predictor, with at most {_hrmax:.1f}% left for perfect state "
         "knowledge in exploratory comparisons. Predictive make-before-break migration was not "
@@ -2546,14 +2625,15 @@ def build(out_path: str) -> None:
         "confirmation seeds found no significant difference; that comparison is therefore "
         "reported as system- and seed-dependent and not as settled. The predictor's "
         "own accuracy is established only within the model family it was trained on. In the "
-        "exploratory, externally parameterised stress test S7, predictive migration was within "
-        f"noise of reactive restoration ({rel_(S7, 'proactive_ai', 'reactive'):+.1f}%) while "
+        "exploratory, externally parameterised stress test S7, predictive migration was not "
+        f"distinguishable from reactive restoration ({rel_(S7, 'proactive_ai', 'reactive'):+.1f}%) while "
         f"protection kept a {-rel_(S7, 'protection', 'reactive'):.0f}% reduction."
     )
     d.p(
         "For operators and designers the implication is to spend risk information where "
         "acting on it is cheap: provision protection where disjoint standby capacity exists, "
-        "use a simple risk or degradation estimate to place and refresh standby paths, and "
+        "keep standby paths repaired, use a simple degradation estimate to place them where "
+        "shocks are correlated, and "
         "treat pre-emptive migration of live traffic as system-dependent: worth evaluating "
         "where detection is slow, switch-over is nearly free and degradation is gradual and "
         "observable, and not worth it under precursor-free common-cause shocks. Criticality-"
@@ -2596,8 +2676,9 @@ def build(out_path: str) -> None:
             f"calibration error is {shared['ece']:.4f} over fifteen equal-width bins and the "
             f"calibration slope {shared['calibration_slope']:.2f}. Fitting the isotonic map and "
             "selecting the threshold on disjoint halves of the validation episodes moves the "
-            f"operating point from {shared['threshold']:.3f} to {disj['threshold']:.3f}, so "
-            "the shared fold does not produce an optimistic operating point."
+            f"operating point from {shared['threshold']:.3f} to {disj['threshold']:.3f} "
+            "without materially changing the test metrics in the table. This diagnostic does not "
+            "rule out optimism from using the same validation fold for model selection."
         )
     fig_sc = d.figure("f19_seed_convergence.png",
                       "Paired effect under infrastructure collapse as a function of the number "
@@ -2624,11 +2705,13 @@ def build(out_path: str) -> None:
         "control-plane services and deployment manifests), together with the processed result "
         "tables from which every figure and table in this manuscript is generated, is archived on "
         "Zenodo [78]. The development version is maintained on GitHub at "
-        "https://github.com/Dev-Nikita/dtwin-humanitarian. Release v1.3-R1 corresponds to this "
-        "manuscript. Compared with v1.1-R1, which produced the raw results, it changes only the "
-        "table, figure and manuscript generation scripts (recovery times are pooled over runs, "
-        "which changes two derived tables) and adds a unit test; the simulation code and the raw "
-        "result files are identical, so the experiments need not be re-run. A snapshot of the "
+        "https://github.com/Dev-Nikita/dtwin-humanitarian. Release v1.4-R1 corresponds to this "
+        "manuscript. Compared with v1.1-R1, which produced the raw results of the development "
+        "and confirmation campaigns, it adds the two exploratory control policies of Section 7.9 "
+        "and their result file, pools recovery times over runs in the table generator (which "
+        "changes two derived tables), and updates the manuscript generation scripts and unit "
+        "tests. The policies and raw result files of v1.1-R1 are unchanged; the confirmed "
+        "policies reproduce the confirmation runs exactly in v1.4-R1. A snapshot of the "
         "same reproducibility package is provided as supplementary material with this submission. "
         "It includes the frozen confirmation protocol, its analysis script, the commit "
         "identifier of the code freeze and the confirmation results. "
@@ -2650,7 +2733,7 @@ def build(out_path: str) -> None:
     d.p("During the preparation and revision of this work the authors used OpenAI ChatGPT and "
         "Anthropic Claude (Opus) for language editing, for drafting and revising text of the "
         "manuscript and of the response to the reviewers, and for assembling the manuscript "
-        "source files from machine-generated result tables. The use of Claude as a coding "
+        "source files from programmatically generated numerical result tables. The use of Claude as a coding "
         "assistant for the research software is described in Section 6.1. The authors reviewed "
         "and edited all AI-assisted output, checked it against the result files, and take full "
         "responsibility for the content of the publication.", size=9.5)

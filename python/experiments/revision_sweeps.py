@@ -107,6 +107,10 @@ def tasks(exp: str) -> List[tuple]:
         # Post-confirmation exploratory ablation on the confirmation seeds.
         return [(s, CONFIRM_SEED0 + CONFIRM_STEP * k)
                 for s in ("S4_disaster_collapse", "S6_common_cause") for k in range(CONFIRM_N)]
+    if exp == "refresh_control":
+        # Post-confirmation exploratory controls on the confirmation seeds (Section 7.9).
+        return [(s, CONFIRM_SEED0 + CONFIRM_STEP * k)
+                for s in ("S4_disaster_collapse", "S6_common_cause") for k in range(CONFIRM_N)]
     if exp == "detection_delay":
         return [(d, s, 1000 + 37 * k) for d in (0, 1, 3, 5)
                 for s in ("S4_disaster_collapse", "S6_common_cause") for k in range(12)]
@@ -270,6 +274,11 @@ def execute(exp: str, task: tuple) -> List[dict]:
         scen, seed = task
         for pol in ("protection_predictive", "protection_predictive_route",
                     "protection_predictive_standby"):
+            rows.append(_pack(_run(scen, pol, seed).run()))
+    elif exp == "refresh_control":
+        scen, seed = task
+        for pol in ("protection", "protection_repair", "protection_predictive",
+                    "protection_predictive_slow"):
             rows.append(_pack(_run(scen, pol, seed).run()))
     elif exp == "detection_delay":
         d, scen, seed = task

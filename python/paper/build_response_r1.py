@@ -134,6 +134,7 @@ def build_texts():
     hr = CT[(CT.family == "exploratory") & CT.contrast.str.startswith("protection_oracle")]
     hrmax = -hr.rel_pct.min()
     eq_all = bool(CEQ.equivalent.all())
+    rcr, rcs = _rc()
     b2 = CT[CT.family == "B2 secondary"]
     AF = "already failed (detection-delay bypass) [%]"
     FA = "false alarm [%]"
@@ -207,9 +208,11 @@ def build_texts():
         "sweep, actuation-effort frontier, migration-cost sweep, misspecified degradation "
         "world, 98-element topology, fixed-traffic feedback ablation, standby-capacity models, "
         "accounting check, controller design sensitivity, parameter, weight and topology "
-        "sensitivity, horizon sweep, and an exploratory decomposition of predictive protection "
-        "run after the confirmation, which attributes its effect almost entirely to the "
-        "risk-aware standby path). Results are organised by mechanism. The inferential "
+        "sensitivity, horizon sweep, and exploratory controls of predictive protection run "
+        "after the confirmation: an ablation that locates its effect in the standby path, and "
+        "a control with risk-free standby repair that shows under collapse "
+        f"{rcs(S4):.0f}% of the effect needs no risk information, while under common-cause "
+        "disruption it comes from degradation-informed standby selection). Results are organised by mechanism. The inferential "
         "family of the original study (P4 against P1, twenty tests) is retained as Family A "
         "for continuity; Family B is the frozen confirmation. Reviewer comments are answered "
         "point by point below; section, table and figure numbers refer to the revised "
@@ -313,13 +316,21 @@ def build_texts():
         "that the result holds when standby capacity is reserved and when capacity limits are "
         "ignored; the P6 − P1b interval excludes zero under all three capacity models. An "
         f"exploratory ablation on the confirmation seeds ({ref('Exploratory decomposition of predictive protection')}) "
-        "shows that the effect comes almost entirely from the risk-aware choice of the "
-        "standby path, not from the choice of the primary path. Two caveats are stated in the "
-        "paper. First, P6 differs from P1b not only in which standby path it picks but also in "
-        "re-computing it during the run (risk-driven refresh), whereas P1b keeps the standby "
-        "path fixed between failures; the comparison is therefore 'risk-informed, refreshed "
-        "protection' against 'static protection', and a P1b variant with risk-free periodic "
-        "refresh is not included. Second, the confidence intervals quoted here and in the "
+        "shows that the effect comes almost entirely from the standby path, not from the "
+        "choice of the primary path. P6 also differs from P1b in re-provisioning a standby "
+        "path that fails while the primary is up, which P1b does only after a switch-over. "
+        "We therefore added a risk-free control, P1b-r, which repairs failed standby paths "
+        "without any risk information (exploratory, same 64 seeds, "
+        f"{ref('Exploratory controls for the P6')}). Under collapse it reproduces "
+        f"{rcs(S4):.0f}% of the P6 − P1b gain ({rcr(S4, 'P1b-r - P1b'):+.2f}%), and P6 − P1b-r "
+        f"is {rcr(S4, 'P6 - P1b-r'):+.2f}% with an interval that includes zero: under collapse "
+        "the confirmed gain is a gain of standby maintenance. Under common-cause disruption "
+        f"repair alone gives {rcr(S6, 'P1b-r - P1b'):+.2f}% and degradation-informed standby "
+        f"selection adds {rcr(S6, 'P6 - P1b-r'):+.2f}% beyond it. "
+        f"{ref('Control-plane operations per run')} reports the refreshes and path "
+        "computations each policy needs, and a variant with five-fold rate-limited refresh "
+        "keeps the full gain under common-cause disruption but loses most of it under "
+        "collapse. Second, the confidence intervals quoted here and in the "
         "confirmation table are per-contrast and unadjusted, while significance decisions use "
         "Holm-adjusted p-values; this is why the P4 − P1b interval under collapse excludes "
         "zero while the Holm-adjusted test is not significant.")
@@ -328,7 +339,9 @@ def build_texts():
         "answer depends on the action. (a) In protection, very little: a contemporaneous index "
         + ("is statistically equivalent to " if eq_all else "performs like ")
         + f"the predictor ({ref('Family B3')}), and perfect state adds at most {hrmax:.1f}% "
-        f"({ref('headroom of perfect-state')}). (b) In migration, part of the gain is not "
+        f"({ref('headroom of perfect-state')}); moreover, under collapse a risk-free control "
+        f"that only repairs failed standby paths reproduces {rcs(S4):.0f}% of the P6 − P1b gain "
+        f"({ref('Exploratory controls for the P6')}). (b) In migration, part of the gain is not "
         "anticipation at all. Classifying every trigger by ground truth "
         f"({ref('Ground-truth classification of migration')}) shows that under common-cause "
         f"disruption {mcv(S6, 'P4', AF):.0f}% of P4's migrations leave elements that have "
@@ -544,10 +557,11 @@ def build_texts():
     R["R3.10"] = ("State the incremental value of prediction more narrowly.",
         "Fully agreed. The paper is now framed as a decomposition: protection is the most "
         "consistent source of gain; risk-informed protection with dynamic standby refresh adds a "
-        "small confirmed improvement over static protection, which an exploratory ablation "
-        "attributes almost entirely to standby-path selection; in that role the learned "
-        "predictor adds no confirmed practical gain over a simple degradation index (equivalence "
-        "shown under collapse and common-cause disruption); and pre-emptive migration on "
+        "small confirmed improvement over static protection; exploratory controls show that "
+        f"under collapse {rcs(S4):.0f}% of it is reproduced by risk-free repair of failed "
+        "standby paths, and that under common-cause disruption it comes from "
+        "degradation-informed standby selection, where the learned predictor adds no confirmed "
+        "practical gain over a simple degradation index; and pre-emptive migration on "
         "predicted risk is most favourable where degradation is gradual and the switch-over is "
         "inexpensive, with a longer detection delay substantially amplifying its benefit. "
         "The abstract and conclusion state these findings with the qualifier 'in the "
@@ -661,6 +675,24 @@ def write_boxes(out_dir):
     return plain
 
 
+def _rc():
+    """Exploratory refresh controls (Section 7.9): relative % of a contrast, and the share
+    of the P6 - P1b gap reproduced by risk-free standby repair."""
+    RC = pd.read_csv(os.path.join("paper-assets", "tables", "r_t_refresh_control.csv"))
+
+    def diff(sc, c):
+        v = RC[(RC.scenario.str.startswith(sc[:2])) & (RC.contrast == c)]
+        return float(v["paired difference [95% CI]"].iloc[0].split(" ")[0])
+
+    def rel(sc, c):
+        v = RC[(RC.scenario.str.startswith(sc[:2])) & (RC.contrast == c)]
+        return float(v["relative [%]"].iloc[0])
+
+    def share(sc):
+        return 100.0 * diff(sc, "P1b-r - P1b") / diff(sc, "P6 - P1b")
+    return rel, share
+
+
 def _conf():
     CT = pd.read_csv(os.path.join(RES, "confirmation_tests.csv"))
     CEQ = pd.read_csv(os.path.join(RES, "confirmation_equivalence.csv"))
@@ -693,7 +725,7 @@ def write_cover(out_dir):
     r, RL, rel, pc, _ = load()
     cf, prot, hrmax, eq_all = _conf()
     text = [
-        "November 2026",
+        os.environ.get("R1_SUBMIT_DATE", "20 November 2026"),
         "Editor, Reliability Engineering & System Safety",
         "Re: Revised manuscript JRESS-D-26-06464",
         "Dear Editor,",
@@ -724,10 +756,12 @@ def write_cover(out_dir):
         f"{max(prot):.1f}% relative to reactive restoration; risk-informed protection with "
         f"dynamic standby refresh adds, over static protection, a confirmed {-cf(S4, 'protection_predictive', 'protection'):.1f}% under "
         f"infrastructure collapse and {-cf(S6, 'protection_predictive', 'protection'):.1f}% "
-        "under common-cause disruption, which a subsequent exploratory ablation attributes "
-        "almost entirely to risk-aware standby-path selection, with a simple degradation index "
+        "under common-cause disruption. Exploratory controls run afterwards show that under "
+        f"collapse {_rc()[1](S4):.0f}% of this gain is reproduced by risk-free repair of failed "
+        "standby paths, while under common-cause disruption it comes from degradation-informed "
+        "standby selection, with a simple degradation index "
         + ("statistically equivalent to" if eq_all else "performing like")
-        + " the learned predictor in that role; and pre-emptive migration on predicted risk "
+        + " the learned predictor; and pre-emptive migration on predicted risk "
         "can be competitive with protection where degradation is gradual, while under "
         "common-cause disruption its gain is almost entirely a bypass of the detection delay. We believe this controlled "
         "decomposition, with a confirmation protocol committed before any confirmation run, is a more useful and more reliable contribution for RESS "
@@ -735,9 +769,10 @@ def write_cover(out_dir):
         "change map links each comment to the revised sections, tables and figures.",
         "The revised manuscript has not been submitted elsewhere. The updated code, the frozen "
         "protocol and the result files are provided as supplementary material and are "
-        "archived on Zenodo (concept doi:10.5281/zenodo.22084965). Release v1.3-R1 corresponds to "
-        "the revised manuscript; the simulation code and raw results are unchanged since release "
-        "v1.1-R1 (doi:10.5281/zenodo.23957597).",
+        "archived on Zenodo (concept doi:10.5281/zenodo.22084965). Release v1.4-R1 corresponds to "
+        "the revised manuscript; it adds the exploratory control experiment of Section 7.9 and "
+        "leaves the policies and raw results of release v1.1-R1 (doi:10.5281/zenodo.23957597) "
+        "unchanged.",
         "Yours sincerely,",
         "Nikita Tarasov (corresponding author) and Roman Zinko",
         "Lviv Polytechnic National University",
@@ -750,8 +785,8 @@ def write_cover(out_dir):
 
     hl = [
         f"Plain 1:1 protection cuts resilience loss by {min(prot):.1f}-{max(prot):.1f}% vs reactive restoration",
-        f"Risk-informed standby refresh beats static protection by {-cf(S4, 'protection_predictive', 'protection'):.1f}% and {-cf(S6, 'protection_predictive', 'protection'):.1f}% (confirmed)",
-        "Exploratory ablation attributes this gain mainly to standby-path selection",
+        f"Risk-informed refreshed protection beats static protection by {-cf(S4, 'protection_predictive', 'protection'):.1f}%/{-cf(S6, 'protection_predictive', 'protection'):.1f}% (confirmed)",
+        f"Under collapse, risk-free standby repair reproduces {_rc()[1](S4):.0f}% of that gain",
         "A degradation index matches the learned predictor for standby selection (S4, S6)",
         "Migration gain under common-cause shocks is mostly a detection-delay bypass",
     ]

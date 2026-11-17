@@ -111,6 +111,7 @@ class PolicySpec:
     migrate: bool = True             # risk may trigger make-before-break migrations of live flows
     backup_refresh: bool = False     # risk re-selects the standby (backup) path, no interruption
     primary_risk: bool = True        # risk enters primary-path selection (ablation switch)
+    refresh_cooldown: int = REFRESH_COOLDOWN  # slots between standby re-evaluations per flow
 
 
 POLICY_SPECS: Dict[str, PolicySpec] = {
@@ -144,6 +145,17 @@ POLICY_SPECS: Dict[str, PolicySpec] = {
     "protection_predictive_standby": PolicySpec(risk="predictor", restoration="protection",
                                                 migrate=False, backup_refresh=True,
                                                 primary_risk=False),
+    # Post-confirmation exploratory controls for the P6 - P1b contrast (do not alter any
+    # policy above). P1b-r: 1:1 protection that also re-provisions a standby path that is
+    # observed down or missing while the primary is up; no risk information is used (all
+    # risks are zero, so the refresh rule fires only for a down or missing standby and the
+    # replacement is the plain capacity-feasible disjoint shortest path).
+    # P6-slow: P6 with standby re-evaluation rate-limited to one per 5 x REFRESH_COOLDOWN.
+    "protection_repair": PolicySpec(restoration="protection", migrate=False,
+                                    backup_refresh=True),
+    "protection_predictive_slow": PolicySpec(risk="predictor", restoration="protection",
+                                             migrate=False, backup_refresh=True,
+                                             refresh_cooldown=5 * REFRESH_COOLDOWN),
 }
 POLICIES = tuple(POLICY_SPECS)
 
@@ -166,6 +178,8 @@ POLICY_LABEL: Dict[str, str] = {
     "protection_predictive_mig": "P6m predictive protection + migration",
     "protection_predictive_route": "P6-route risk-aware primary only",
     "protection_predictive_standby": "P6-standby risk-aware standby only",
+    "protection_repair": "P1b-r protection + risk-free standby repair",
+    "protection_predictive_slow": "P6-slow P6, refresh rate-limited x5",
 }
 
 
@@ -364,7 +378,7 @@ class Orchestrator:
             self.backup.pop(flow.flow_id, None)
 
     def _maybe_refresh_backup(self, flow: Flow, step: int) -> None:
-        if step - self.last_refresh.get(flow.flow_id, -10_000) < REFRESH_COOLDOWN:
+        if step - self.last_refresh.get(flow.flow_id, -10_000) < self.spec.refresh_cooldown:
             return
         bk = self.backup.get(flow.flow_id)
         bk_down = bk is None or self.path_broken(bk)

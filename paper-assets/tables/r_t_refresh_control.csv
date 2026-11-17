@@ -1,0 +1,9 @@
+scenario,contrast,loss of first,paired difference [95% CI],relative [%],Wilcoxon p,n
+S4 infrastructure collapse,P1b-r - P1b,11.74,"-0.392 [-0.526, -0.259]",-3.23,0.0,64
+S4 infrastructure collapse,P6 - P1b-r,11.70,"-0.041 [-0.090, 0.008]",-0.35,0.0316,64
+S4 infrastructure collapse,P6 - P1b,11.70,"-0.433 [-0.572, -0.295]",-3.57,0.0,64
+S4 infrastructure collapse,P6-slow - P6,11.95,"+0.250 [0.146, 0.355]",+2.14,0.0,64
+S6 common cause*,P1b-r - P1b,20.99,"-0.029 [-0.052, -0.005]",-0.14,0.0117,64
+S6 common cause*,P6 - P1b-r,20.29,"-0.700 [-0.871, -0.530]",-3.34,0.0,64
+S6 common cause*,P6 - P1b,20.29,"-0.729 [-0.900, -0.558]",-3.47,0.0,64
+S6 common cause*,P6-slow - P6,20.30,"+0.008 [-0.008, 0.023]",+0.04,0.3173,64

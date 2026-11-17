@@ -13,7 +13,7 @@
       "affiliation": "Lviv Polytechnic National University"
     }
   ],
-  "description": "Simulator, experiment and analysis code, frozen confirmation protocol, raw result files and manuscript-generation scripts for the revised manuscript JRESS-D-26-06464 (Reliability Engineering & System Safety). The raw simulation results were produced with release v1.1-R1 and are unchanged in later releases; later releases change only table, figure and manuscript generation scripts and tests. See README.md, section 8, for the release history.",
+  "description": "Simulator, experiment and analysis code, frozen confirmation protocol, raw result files and manuscript-generation scripts for the revised manuscript JRESS-D-26-06464 (Reliability Engineering & System Safety). The raw results of the development and confirmation campaigns were produced with release v1.1-R1 and are unchanged in later releases; v1.4-R1 adds an exploratory control experiment (risk-free standby repair and rate-limited refresh). See README.md, section 8, for the release history.",
   "keywords": [
     "resilience",
     "digital twin",

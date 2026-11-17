@@ -40,7 +40,7 @@ heldout:
 SWEEPS ?= detection_delay frontier migration_cost_sweep misspec_closed_loop large_topology \
 	feedback_ablation_fixed design_sensitivity topology_sweep parameter_sensitivity \
 	controller_weight_sensitivity accounting_check endogeneity_check protection_modes \
-	p6_decomposition
+	p6_decomposition refresh_control
 WORKERS ?= 4
 OUT ?= ../submission_R1
 
