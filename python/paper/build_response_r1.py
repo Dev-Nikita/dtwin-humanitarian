@@ -180,13 +180,17 @@ def build_texts():
         "In the evaluated systems the corrected evidence gives a layered answer to the "
         "question in the new title. Plain 1:1 protection, which uses no risk information, "
         f"reduces cumulative resilience loss relative to reactive restoration by "
-        f"{min(prot):.1f}–{max(prot):.1f}%. Using the risk estimate only for decisions that "
-        "interrupt no traffic — primary-path choice and standby refresh (new policy P6) — adds "
+        f"{min(prot):.1f}–{max(prot):.1f}%. Risk-informed protection with dynamic standby "
+        "refresh (new policy P6), which uses the risk estimate only for decisions that interrupt "
+        "no traffic, adds over static protection "
         f"a confirmed {-cf(S4, 'protection_predictive', 'protection'):.1f}% under "
         f"infrastructure collapse and {-cf(S6, 'protection_predictive', 'protection'):.1f}% "
-        "under common-cause disruption (primary family B1, both Holm p < 0.0001). For that "
-        "role a contemporaneous degradation index is "
-        + ("statistically equivalent to " if eq_all else "practically indistinguishable from ")
+        "under common-cause disruption (primary family B1, both Holm p < 0.0001). Exploratory "
+        "controls run afterwards show that under collapse "
+        f"{_rc()[1](S4):.0f}% of this gain is reproduced by risk-free repair of failed standby "
+        "paths, while under common-cause disruption it comes from degradation-informed standby "
+        "selection. For that role a contemporaneous degradation index is "
+        + ("equivalent, within prespecified margins, to " if eq_all else "practically indistinguishable from ")
         + f"the learned predictor (TOST, family B3), and in exploratory comparisons perfect state "
         f"adds at most {hrmax:.1f}%. Predictive migration (P4) is not significantly different "
         "from protection under collapse and non-terrestrial degradation after multiplicity "
@@ -337,7 +341,7 @@ def build_texts():
     R["R1.5"] = ("How much of the improvement is truly contributed by failure anticipation?",
         "This is now the question the paper is built around (RQ2, Sections 7.2–7.7). The "
         "answer depends on the action. (a) In protection, very little: a contemporaneous index "
-        + ("is statistically equivalent to " if eq_all else "performs like ")
+        + ("is equivalent, within prespecified margins, to " if eq_all else "performs like ")
         + f"the predictor ({ref('Family B3')}), and perfect state adds at most {hrmax:.1f}% "
         f"({ref('headroom of perfect-state')}); moreover, under collapse a risk-free control "
         f"that only repairs failed standby paths reproduces {rcs(S4):.0f}% of the P6 − P1b gain "
@@ -725,7 +729,7 @@ def write_cover(out_dir):
     r, RL, rel, pc, _ = load()
     cf, prot, hrmax, eq_all = _conf()
     text = [
-        os.environ.get("R1_SUBMIT_DATE", "20 November 2026"),
+        os.environ.get("R1_SUBMIT_DATE", "17 November 2026"),
         "Editor, Reliability Engineering & System Safety",
         "Re: Revised manuscript JRESS-D-26-06464",
         "Dear Editor,",
@@ -734,7 +738,8 @@ def write_cover(out_dir):
         "Anticipation, Protection and Risk-Aware Recovery in Hybrid 5G/6G-Class and LEO "
         "Satellite Networks'. The title was changed because the revised study no longer "
         "claims a performance gain for one predictive policy; it asks which mechanism the "
-        "gain comes from, as Reviewers 1 and 3 suggested. The original title was: 'Predictive "
+        "gain comes from, in response to the concerns of Reviewers 1 and 3 about the "
+        "attribution and interpretation of the resilience gains. The original title was: 'Predictive "
         "Resilience of Hybrid 5G/6G-Class and LEO Satellite Networks: A Digital-Twin Framework "
         "for Failure Anticipation and Risk-Aware Recovery'. The research subject and the authors are unchanged; the experimental implementation, "
         "the evaluation protocol, the results and the conclusions were substantially revised in "
@@ -760,7 +765,7 @@ def write_cover(out_dir):
         f"collapse {_rc()[1](S4):.0f}% of this gain is reproduced by risk-free repair of failed "
         "standby paths, while under common-cause disruption it comes from degradation-informed "
         "standby selection, with a simple degradation index "
-        + ("statistically equivalent to" if eq_all else "performing like")
+        + ("equivalent, within prespecified margins, to" if eq_all else "performing like")
         + " the learned predictor; and pre-emptive migration on predicted risk "
         "can be competitive with protection where degradation is gradual, while under "
         "common-cause disruption its gain is almost entirely a bypass of the detection delay. We believe this controlled "
@@ -769,17 +774,36 @@ def write_cover(out_dir):
         "change map links each comment to the revised sections, tables and figures.",
         "The revised manuscript has not been submitted elsewhere. The updated code, the frozen "
         "protocol and the result files are provided as supplementary material and are "
-        "archived on Zenodo (concept doi:10.5281/zenodo.22084965). Release v1.4-R1 corresponds to "
-        "the revised manuscript; it adds the exploratory control experiment of Section 7.9 and "
-        "leaves the policies and raw results of release v1.1-R1 (doi:10.5281/zenodo.23957597) "
-        "unchanged.",
+        "archived on Zenodo as release v1.4-R1 (doi:10.5281/zenodo.24316819), which adds the "
+        "exploratory control experiment of Section 7.9 and leaves the policies and raw results "
+        "of release v1.1-R1 (doi:10.5281/zenodo.23957597) unchanged.",
         "Yours sincerely,",
         "Nikita Tarasov (corresponding author) and Roman Zinko",
         "Lviv Polytechnic National University",
     ]
+    from docx.shared import Pt, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
     doc = Document()
-    for t in text:
-        doc.add_paragraph(t)
+    sec = doc.sections[0]
+    sec.page_height, sec.page_width = Cm(29.7), Cm(21.0)
+    sec.top_margin = sec.bottom_margin = Cm(2.0)
+    sec.left_margin = sec.right_margin = Cm(2.2)
+    st = doc.styles["Normal"]
+    st.font.name, st.font.size = "Times New Roman", Pt(10.5)
+    st.paragraph_format.space_after = Pt(5)
+    st.paragraph_format.space_before = Pt(0)
+    st.paragraph_format.line_spacing = 1.0
+    head = doc.add_paragraph()
+    head.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run = head.add_run("Nikita Tarasov and Roman Zinko\nLviv Polytechnic National University, "
+                       "Lviv, Ukraine\nCorresponding author: dev.nikita@outlook.com")
+    run.font.size = Pt(9.5)
+    for i, t in enumerate(text):
+        par = doc.add_paragraph(t)
+        if i >= 6:   # body paragraphs and closing
+            par.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY if len(t) > 120 else WD_ALIGN_PARAGRAPH.LEFT
+        elif len(t) > 120:
+            par.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     doc.save(os.path.join(out_dir, "Cover_Letter_R1.docx"))
     open(os.path.join(out_dir, "Cover_Letter_R1.md"), "w").write("\n\n".join(text))
 

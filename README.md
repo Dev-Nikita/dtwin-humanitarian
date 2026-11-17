@@ -39,14 +39,20 @@ freeze record: `CODE_FREEZE.md`):
 
 * Plain 1:1 protection reduces cumulative resilience loss by 2.9–18.5 % relative to reactive
   restoration (S3–S6).
-* Risk-informed protection (P6) adds a confirmed 3.6 % (infrastructure collapse) and 3.5 %
-  (common-cause disruption) on top of protection (B1, Holm p < 0.0001).
-* For this role a contemporaneous degradation index is statistically equivalent to the learned
-  predictor (B3, TOST); perfect state adds at most 1.5 % (exploratory).
+* Risk-informed protection with dynamic standby refresh (P6) adds a confirmed 3.6 %
+  (infrastructure collapse) and 3.5 % (common-cause disruption) over static protection P1b
+  (B1, Holm p < 0.0001).
+* For this role a contemporaneous degradation index is equivalent to the learned predictor
+  within the prespecified margins (B3, TOST, S4 and S6); perfect state adds at most 1.5 %
+  (exploratory).
 * Predictive migration (P4) is not significantly different from protection under collapse and
   satellite-segment degradation after multiplicity correction, and worse under handover
   dynamics and common-cause disruption.
-* An exploratory ablation attributes the P6 effect almost entirely to standby-path selection.
+* Exploratory controls after the confirmation (`refresh_control`, same 64 seeds) locate the
+  P6 effect in the standby path and show that its source depends on the scenario: under
+  collapse, risk-free repair of failed standby paths (P1b-r) reproduces 91 % of it; under
+  common-cause disruption, degradation-informed standby selection adds 3.3 % beyond repair.
+  Standby refreshes and path computations are reported but not charged to the endpoint.
 
 ## 3. Repository layout
 
@@ -124,7 +130,8 @@ Released for academic use. Please cite the accompanying paper.
 | `r1b-freeze` | Code freeze before the confirmation runs (`5dbaeaf`) |
 | `v1.1-R1` | Revision R1; the raw simulation results in `data/results` were produced with this release (doi:10.5281/zenodo.23957597) |
 | `v1.2-R1` | Same simulation code and raw result files as `v1.1-R1`; pooled recovery-time aggregation in the table generator (two derived tables in `paper-assets/tables` change), corrected manuscript text generators, LaTeX font handling and a topology manifest test (doi:10.5281/zenodo.24243822) |
-| `v1.3-R1` | Same simulation code and raw result files as `v1.1-R1`; final manuscript text (related work, AI-use statement, cover letter), flat LaTeX source for Editorial Manager, Zenodo metadata (`.zenodo.json`) |
-| `v1.4-R1` | Adds two exploratory control policies (`protection_repair` = P1b-r, risk-free standby repair; `protection_predictive_slow` = P6 with five-fold rate-limited refresh), the experiment `refresh_control` and its result file; all other policies and raw results unchanged (P1b and P6 reproduce `confirmation.csv` exactly). Abstract ≤ 200 words, six keywords, undefined statistics shown as a dash. Matches the submitted revision |
+| `v1.3-R1` | (doi:10.5281/zenodo.24250668) Same simulation code and raw result files as `v1.1-R1`; final manuscript text (related work, AI-use statement, cover letter), flat LaTeX source for Editorial Manager, Zenodo metadata (`.zenodo.json`) |
+| `v1.4-R1` | Adds two exploratory control policies (`protection_repair` = P1b-r, risk-free standby repair; `protection_predictive_slow` = P6 with five-fold rate-limited refresh), the experiment `refresh_control` and its result file; all other policies and raw results unchanged (P1b and P6 reproduce `confirmation.csv` exactly). Abstract ≤ 200 words, six keywords, undefined statistics shown as a dash. doi:10.5281/zenodo.24316819 |
+| `v1.5-R1` | Same code and data as `v1.4-R1`; final cover letter (date, one page), change-map generator (`build_change_map.py`), wording of the equivalence and refresh claims, README results. Matches the submitted revision |
 
 All versions: concept doi:10.5281/zenodo.22084965.

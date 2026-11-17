@@ -66,6 +66,7 @@ paper:
 	mkdir -p $(OUT)
 	$(PY) -m python.paper.build_paper_r1 --out $(OUT)/Manuscript_R1.docx
 	$(PY) -m python.paper.build_response_r1 --out $(OUT) --captions $(OUT)/Manuscript_R1.docx.captions.json
+	$(PY) -m python.paper.build_change_map --out $(OUT) --captions $(OUT)/Manuscript_R1.docx.captions.json
 	$(PY) -m python.paper.set_metadata $(OUT)
 	$(PY) -m python.paper.build_latex --docx $(OUT)/Manuscript_R1.docx --out $(OUT)/els-article-R1
 

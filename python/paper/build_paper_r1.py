@@ -370,7 +370,7 @@ REFERENCES: List[str] = [
     "J. D. Hunter, “Matplotlib: a 2D graphics environment,” Computing in Science & Engineering, vol. 9, no. 3, pp. 90–95, 2007.",
     "R. S. Sutton and A. G. Barto, Reinforcement Learning: An Introduction, 2nd ed. MIT Press, 2018.",
     "N. C. Luong et al., “Applications of deep reinforcement learning in communications and networking: a survey,” IEEE Communications Surveys & Tutorials, vol. 21, no. 4, pp. 3133–3174, 2019.",
-    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, concept doi:10.5281/zenodo.22084965 (all versions). Release v1.4-R1 corresponds to this manuscript; the raw results of release v1.1-R1, doi:10.5281/zenodo.23957597, are unchanged in it.",
+    "N. Tarasov and R. Zinko, \u201cCode and data for: Where does predictive resilience come from? A simulation-based digital-twin assessment of failure anticipation, protection and risk-aware recovery in hybrid 5G/6G-class and LEO satellite networks (revision R1),\u201d Zenodo, 2026, concept doi:10.5281/zenodo.22084965 (all versions). The code and data of this manuscript are release v1.4-R1, doi:10.5281/zenodo.24316819; its raw campaign results are those of release v1.1-R1, doi:10.5281/zenodo.23957597.",
     "P. Pan, G. Swallow, and A. Atlas, \u201cFast reroute extensions to RSVP-TE for LSP tunnels,\u201d IETF RFC 4090, 2005, doi:10.17487/RFC4090.",
     "A. M. Law, Simulation Modeling and Analysis, 5th ed. McGraw-Hill, 2015.",
     "C. Westphal, L. Han, and R. Li, “LEO satellite networking relaunched: survey and current research challenges,” ITU Journal on Future and Evolving Technologies, vol. 4, no. 4, pp. 711–736, 2023.",
@@ -490,7 +490,7 @@ def build(out_path: str) -> None:
     d.p(
         "Failure prediction is often proposed to make hybrid terrestrial–satellite networks "
         "more resilient, but its benefit can be confounded with conventional protection and "
-        "with faster reaction to failures that have already occurred. We separate these "
+        "with faster reaction to failures already present. We separate these "
         "mechanisms in a simulation-based digital twin of a hybrid 5G/6G-class and "
         "low-Earth-orbit network with hidden degradation, noisy telemetry and delayed failure "
         "detection. Fifteen recovery policies are compared on common random numbers in "
@@ -504,7 +504,7 @@ def build(out_path: str) -> None:
         f"{_share(S4):.0f}% of this gain is reproduced by risk-free repair of failed standby "
         "paths, whereas under common-cause disruption it requires degradation information, "
         "for which a contemporaneous degradation index "
-        + ("is statistically equivalent to" if _eq_all else "performs like")
+        + ("is equivalent, within prespecified margins, to" if _eq_all else "performs like")
         + " the learned predictor. Predictive migration of live traffic is not significantly "
         "better than protection under collapse and is worse under handover and common-cause "
         "disruption, where its gain over reactive restoration is mostly a bypass of the "
@@ -600,7 +600,8 @@ def build(out_path: str) -> None:
         "improvement over static protection; exploratory controls attribute it under collapse "
         "to the repair of failed standby paths, which needs no risk information, and under "
         "common-cause disruption to degradation-informed standby selection, for which a simple "
-        "degradation index is equivalent to the learned predictor. The benefit of pre-emptive "
+        "degradation index is equivalent to the learned predictor within prespecified margins. "
+        "The benefit of pre-emptive "
         "migration is partly a detection-delay effect and depends on gradual degradation and "
         "a nearly free switch-over.",
     ], prefix="C{i}.")
@@ -1574,13 +1575,14 @@ def build(out_path: str) -> None:
         f"restoration under handover dynamics ({rel_(S5, 'proactive_ai', 'reactive'):+.1f}%).",
         "Predictive protection (P6) keeps the detection-driven switch-over of P1b and uses the "
         "risk estimate only for decisions that interrupt no traffic: the choice of the primary "
-        "path and the refresh of the standby path. Relative to P1b it lowers the loss by "
+        "path and the refresh of the standby path, which also replaces a standby path that has "
+        "failed (Section 7.9 separates the two). Relative to P1b it lowers the loss by "
         f"{-rel_(S4, 'protection_predictive', 'protection'):.1f}% under collapse "
         f"(95% CI of the difference {ci_(S4, 'protection_predictive', 'protection')}) and "
         f"{-rel_(S6, 'protection_predictive', 'protection'):.1f}% under common-cause "
         f"disruption ({ci_(S6, 'protection_predictive', 'protection')}), and is "
         "indistinguishable from it where protection itself has little to do (S2, S5, S7).",
-        "Inside the protection family the risk source hardly matters: the degradation index "
+        "Inside the protection family the risk source makes little difference: the degradation index "
         f"(P6i) differs from the predictor by {sp(rel_(S4, 'protection_index', 'protection_predictive'))} "
         f"under collapse and {sp(rel_(S6, 'protection_index', 'protection_predictive'))} under "
         "common-cause disruption, and the calibrated perfect-state probability (P6o) by "
@@ -2429,7 +2431,8 @@ def build(out_path: str) -> None:
         f"effect is small, {-_c(S4, 'protection_predictive', 'protection'):.1f}% and "
         f"{-_c(S6, 'protection_predictive', 'protection'):.1f}% on top of protection, but it was "
         "confirmed on fresh seeds, holds under all three standby-capacity models and in nine of "
-        "ten controller-design settings, and cannot create an outage. The third is pre-emptive "
+        "ten controller-design settings, and does not interrupt live traffic at the time of "
+        "standby selection. The third is pre-emptive "
         "migration, whose gain has two parts. One is the bypass of the detection delay, that is, "
         "acting on elements that have already failed but are not yet confirmed down; this is all "
         "there is under common-cause disruption and vanishes when detection is instantaneous. "
@@ -2558,7 +2561,8 @@ def build(out_path: str) -> None:
         "scale and shape, not that it is invariant to topology.",
         "The control-plane cost of standby refresh is counted (Section 7.9) but not charged "
         "in the resilience endpoint. Under collapse P6 performs "
-        f"{_rf(S4, 'protection_predictive'):.0f} standby refreshes per run on average and P6i "
+        f"{_rf(S4, 'protection_predictive'):.0f} standby refreshes per run on average over the "
+        f"64 confirmation seeds and P6i "
         f"{_rf(S4, 'protection_index'):.0f}, against none for P1b; signalling load, state "
         "churn and the risk of a refresh racing a failure are not modelled, so the P6 − P1b "
         "gain is a gain before control-plane overhead. The risk-free repair control and the "
@@ -2602,8 +2606,8 @@ def build(out_path: str) -> None:
     d.p(
         "In the evaluated systems the answer is layered. Plain 1:1 protection, without any "
         f"risk information, reduced cumulative resilience loss by {min(_prot):.1f}–"
-        f"{max(_prot):.1f}% relative to reactive restoration. Using the risk estimate only for "
-        "decisions that interrupt no traffic (primary-path choice and standby refresh) added "
+        f"{max(_prot):.1f}% relative to reactive restoration. Risk-informed protection with "
+        "dynamic standby refresh, which acts only through decisions that interrupt no traffic, added "
         f"a confirmed {-_c(S4, 'protection_predictive', 'protection'):.1f}% under "
         f"infrastructure collapse and {-_c(S6, 'protection_predictive', 'protection'):.1f}% "
         "under common-cause disruption. Exploratory controls locate this gain in the standby "
@@ -2611,7 +2615,7 @@ def build(out_path: str) -> None:
         "of it is reproduced by repairing failed standby paths without any risk information, "
         "while under common-cause disruption it comes from degradation-informed standby "
         "selection, for which a contemporaneous degradation index "
-        + ("was statistically equivalent to" if _eq_all else "performed like")
+        + ("was equivalent, within the prespecified margins, to" if _eq_all else "performed like")
         + f" the learned predictor, with at most {_hrmax:.1f}% left for perfect state "
         "knowledge in exploratory comparisons. Predictive make-before-break migration was not "
         "significantly different from protection under collapse and non-terrestrial "
@@ -2705,8 +2709,8 @@ def build(out_path: str) -> None:
         "control-plane services and deployment manifests), together with the processed result "
         "tables from which every figure and table in this manuscript is generated, is archived on "
         "Zenodo [78]. The development version is maintained on GitHub at "
-        "https://github.com/Dev-Nikita/dtwin-humanitarian. Release v1.4-R1 corresponds to this "
-        "manuscript. Compared with v1.1-R1, which produced the raw results of the development "
+        "https://github.com/Dev-Nikita/dtwin-humanitarian. Release v1.4-R1 "
+        "(doi:10.5281/zenodo.24316819) contains the code and data of this manuscript. Compared with v1.1-R1, which produced the raw results of the development "
         "and confirmation campaigns, it adds the two exploratory control policies of Section 7.9 "
         "and their result file, pools recovery times over runs in the table generator (which "
         "changes two derived tables), and updates the manuscript generation scripts and unit "
