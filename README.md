@@ -132,6 +132,7 @@ Released for academic use. Please cite the accompanying paper.
 | `v1.2-R1` | Same simulation code and raw result files as `v1.1-R1`; pooled recovery-time aggregation in the table generator (two derived tables in `paper-assets/tables` change), corrected manuscript text generators, LaTeX font handling and a topology manifest test (doi:10.5281/zenodo.24243822) |
 | `v1.3-R1` | (doi:10.5281/zenodo.24250668) Same simulation code and raw result files as `v1.1-R1`; final manuscript text (related work, AI-use statement, cover letter), flat LaTeX source for Editorial Manager, Zenodo metadata (`.zenodo.json`) |
 | `v1.4-R1` | Adds two exploratory control policies (`protection_repair` = P1b-r, risk-free standby repair; `protection_predictive_slow` = P6 with five-fold rate-limited refresh), the experiment `refresh_control` and its result file; all other policies and raw results unchanged (P1b and P6 reproduce `confirmation.csv` exactly). Abstract ≤ 200 words, six keywords, undefined statistics shown as a dash. doi:10.5281/zenodo.24316819 |
-| `v1.5-R1` | Same code and data as `v1.4-R1`; final cover letter (date, one page), change-map generator (`build_change_map.py`), wording of the equivalence and refresh claims, README results. Matches the submitted revision |
+| `v1.5-R1` | Same code and data as `v1.4-R1`; final cover letter (date, one page), change-map generator (`build_change_map.py`), wording of the equivalence and refresh claims, README results |
+| `v1.6-R1` | Same code and data as `v1.4-R1`; R1.4 reply and Section 7.9 state that the attribution of the confirmed P6 − P1b gain to standby repair is exploratory. Matches the submitted revision |
 
 All versions: concept doi:10.5281/zenodo.22084965.
